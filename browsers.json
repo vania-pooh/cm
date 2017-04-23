@@ -1,7 +1,6 @@
 {
     "drivers": {
       
-      // Chromedriver
       "chromedriver_2.21": {
         "linux": {
           "386": "http://chromedriver.storage.googleapis.com/2.21/chromedriver_linux32.zip",
@@ -106,7 +105,7 @@
           "amd64": "http://chromedriver.storage.googleapis.com/2.29/chromedriver_win32.zip"
         }
       },
-      //Geckodriver
+      
       "geckodriver_0.13.0":{
         "linux": {
           "386": "https://github.com/mozilla/geckodriver/releases/download/v0.13.0/geckodriver-v0.13.0-linux32.tar.gz",
@@ -147,7 +146,6 @@
         }
       },
       
-      //Operadriver
       "operadriver_0.2.2": {
         "linux": {
           "386": "https://github.com/operasoftware/operachromiumdriver/releases/download/v0.2.2/operadriver_linux32.zip",
@@ -175,7 +173,6 @@
         }
       },
         
-      //IEDriver
       "iedriver_3.4.0":{
         "windows": {
           "386": "http://selenium-release.storage.googleapis.com/3.4/IEDriverServer_Win32_3.4.0.zip",

@@ -3,8 +3,15 @@
       
       "chromedriver_2.21": {
         "linux": {
-          "386": "http://chromedriver.storage.googleapis.com/2.21/chromedriver_linux32.zip",
-          "amd64": "http://chromedriver.storage.googleapis.com/2.21/chromedriver_linux64.zip"
+          "386": {
+            "url": "http://chromedriver.storage.googleapis.com/2.21/chromedriver_linux32.zip",
+            "filename": "chromedriver",
+            "command": "/usr/bin/chromedriver --port=4444 --whitelisted-ips='' --verbose"
+          },
+          "amd64": {
+            "url": "http://chromedriver.storage.googleapis.com/2.21/chromedriver_linux64.zip",
+            "filename": "chromedriver"
+          }
         },
         "darwin": {
           "amd64": "http://chromedriver.storage.googleapis.com/2.21/chromedriver_mac64.zip"

@@ -28,7 +28,6 @@ type SelenoidConfig map[string]config.Versions
 type DockerConfigurator struct {
 	BaseConfigurator
 	LastVersions int
-	Quiet        bool
 	Pull         bool
 	RegistryUrl  string
 	Tmpfs        int
@@ -38,8 +37,10 @@ type DockerConfigurator struct {
 
 func NewDockerConfigurator(registryUrl string, quiet bool) (*DockerConfigurator, error) {
 	c := &DockerConfigurator{
+		BaseConfigurator: BaseConfigurator{
+			Quiet:       quiet,
+		},
 		RegistryUrl: registryUrl,
-		Quiet:       quiet,
 	}
 	if c.Quiet {
 		log.SetFlags(0)

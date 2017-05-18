@@ -24,6 +24,7 @@ func init() {
 	selenoidCmd.Flags().IntVarP(&lastVersions, "last-versions", "l", 5, "process only last N versions")
 	selenoidCmd.Flags().BoolVarP(&pull, "pull", "p", false, "pull images if not present")
 	selenoidCmd.Flags().IntVarP(&tmpfs, "tmpfs", "t", 0, "add tmpfs volume sized in megabytes")
+	selenoidCmd.AddCommand(driversCmd)
 }
 
 var selenoidCmd = &cobra.Command{
@@ -31,7 +32,6 @@ var selenoidCmd = &cobra.Command{
 	Short: "Generate JSON configuration for Selenoid",
 	Run: func(cmd *cobra.Command, args []string) {
 
-		//TODO: determine whether Docker is installed and use respective configurator
 		cfg, err := selenoid.NewDockerConfigurator(registry, quiet)
 		cfg.LastVersions = lastVersions
 		cfg.Pull = pull

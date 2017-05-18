@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
+	"fmt"
 )
 
 var (
@@ -78,11 +79,12 @@ func TestAllUrlsAreValid(t *testing.T) {
 	err = json.Unmarshal(data, &browsers)
 	AssertThat(t, err, Is{nil})
 
-	////Loops are ugly but we need to check all urls in one test...
+	//Loops are ugly but we need to check all urls in one test...
 	for _, browser := range browsers {
 		for _, architectures := range browser.Files {
 			for _, driver := range architectures {
 				u := driver.URL
+				fmt.Printf("Checking URL: %s\n", u)
 				req, err := http.NewRequest(http.MethodHead, u, nil)
 				client := &http.Client{
 					CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -113,7 +115,7 @@ func TestConfigureDrivers(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	browsersJsonUrl := mockServerUrl("/browsers.json")
-	configurator := NewDriversConfigurator(dir, browsersJsonUrl, true)
+	configurator := NewDriversConfigurator(dir, browsersJsonUrl, true, false)
 	cfg := *configurator.Configure()
 	AssertThat(t, len(cfg), EqualTo{2})
 

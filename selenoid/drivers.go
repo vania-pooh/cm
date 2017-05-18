@@ -23,8 +23,6 @@ import (
 )
 
 const (
-	DefaultBrowsersJsonURL = "https://raw.githubusercontent.com/aerokube/cm/master/browsers.json"
-
 	zipMagicHeader  = "504b"
 	gzipMagicHeader = "1f8b"
 )
@@ -58,8 +56,15 @@ type DriversConfigurator struct {
 	Download        bool
 }
 
-func NewDriversConfigurator(configDir string, browsersJsonUrl string, download bool) *DriversConfigurator {
-	return &DriversConfigurator{ConfigDir: configDir, BrowsersJsonUrl: browsersJsonUrl, Download: download}
+func NewDriversConfigurator(configDir string, browsersJsonUrl string, download bool, quiet bool) *DriversConfigurator {
+	return &DriversConfigurator{
+		BaseConfigurator: BaseConfigurator{
+			Quiet: quiet,
+		},
+		ConfigDir: configDir,
+		BrowsersJsonUrl: browsersJsonUrl,
+		Download: download,
+	}
 }
 
 func (c *DriversConfigurator) Configure() *SelenoidConfig {

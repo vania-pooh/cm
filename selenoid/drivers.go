@@ -100,7 +100,9 @@ func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {
 }
 
 func (c *DriversConfigurator) loadAvailableBrowsers() *Browsers {
-	data, err := downloadFile(c.BrowsersJsonUrl)
+	jsonUrl := c.BrowsersJsonUrl
+	c.Printf("downloading browser data from: %s\n", jsonUrl)
+	data, err := downloadFile(jsonUrl)
 	if err != nil {
 		c.Printf("browsers data download error: %v\n", err)
 		return nil
@@ -273,7 +275,7 @@ func (c *DriversConfigurator) downloadDrivers(browsers *Browsers, configDir stri
 	ret := []downloadedDriver{}
 loop:
 	for browserName, browser := range *browsers {
-		if isBrowserPresent(browser) {
+		if c.isBrowserPresent(browser) {
 			goos := runtime.GOOS
 			goarch := runtime.GOARCH
 			if architectures, ok := browser.Files[goos]; ok {
@@ -297,9 +299,13 @@ loop:
 	return ret
 }
 
-func isBrowserPresent(browser Browser) bool {
-	cmd := exec.Command(browser.TestCommand)
-	cmd.Start()
-	cmd.Wait()
+func (c *DriversConfigurator) isBrowserPresent(browser Browser) bool {
+	command := browser.TestCommand
+	cmd := exec.Command(command)
+	err := cmd.Run()
+	if err != nil {
+		c.Printf("failed to execute command [%s]: %v\n", command, err)
+		return false
+	}
 	return cmd.ProcessState.Success()
 }

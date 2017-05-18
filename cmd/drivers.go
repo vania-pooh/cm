@@ -40,6 +40,10 @@ var driversCmd = &cobra.Command{
 		cfg := selenoid.NewDriversConfigurator(configDir, browsers, download, quiet)
 
 		browsers := cfg.Configure()
+		
+		if browsers == nil {
+			os.Exit(1)
+		}
 
 		data, err := json.MarshalIndent(*browsers, "", "    ")
 		if err != nil {

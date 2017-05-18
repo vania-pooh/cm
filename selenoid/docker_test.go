@@ -12,12 +12,12 @@ import (
 )
 
 var (
-	mock *httptest.Server
+	mockDockerServer *httptest.Server
 )
 
 func init() {
-	mock = httptest.NewServer(mux())
-	os.Setenv("DOCKER_HOST", "tcp://"+hostPort(mock.URL))
+	mockDockerServer = httptest.NewServer(mux())
+	os.Setenv("DOCKER_HOST", "tcp://"+hostPort(mockDockerServer.URL))
 	os.Setenv("DOCKER_API_VERSION", "1.29")
 }
 
@@ -68,7 +68,7 @@ func TestImageWithTag(t *testing.T) {
 }
 
 func TestFetchImageTags(t *testing.T) {
-	c, err := NewConfigurator(mock.URL, false)
+	c, err := NewDockerConfigurator(mockDockerServer.URL, false)
 	AssertThat(t, err, Is{nil})
 	defer c.Close()
 	tags := c.fetchImageTags("selenoid/firefox")
@@ -79,7 +79,7 @@ func TestFetchImageTags(t *testing.T) {
 }
 
 func TestPullImages(t *testing.T) {
-	c, err := NewConfigurator(mock.URL, false)
+	c, err := NewDockerConfigurator(mockDockerServer.URL, false)
 	AssertThat(t, err, Is{nil})
 	defer c.Close()
 	tags := c.pullImages("selenoid/firefox", []string{"46.0", "45.0"})
@@ -88,22 +88,22 @@ func TestPullImages(t *testing.T) {
 	AssertThat(t, tags[1], EqualTo{"45.0"})
 }
 
-func TestCreateConfig(t *testing.T) {
-	testCreateConfig(t, true)
+func TestConfigureDocker(t *testing.T) {
+	testConfigure(t, true)
 }
 
 func TestLimitNoPull(t *testing.T) {
-	testCreateConfig(t, false)
+	testConfigure(t, false)
 }
 
-func testCreateConfig(t *testing.T, pull bool) {
-	c, err := NewConfigurator(mock.URL, false)
+func testConfigure(t *testing.T, pull bool) {
+	c, err := NewDockerConfigurator(mockDockerServer.URL, false)
 	AssertThat(t, err, Is{nil})
 	c.LastVersions = 2
 	c.Pull = pull
 	c.Tmpfs = 512
 	defer c.Close()
-	cfg := c.createConfig()
+	cfg := *c.Configure()
 	AssertThat(t, len(cfg), EqualTo{2})
 
 	firefoxVersions, hasFirefoxKey := cfg["firefox"]

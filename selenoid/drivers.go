@@ -1,240 +1,300 @@
 package selenoid
 
 import (
-	"os/exec"
-	"net/http"
-	"fmt"
-	"io/ioutil"
-	"encoding/json"
-	"strings"
-	"runtime"
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"encoding/hex"
-	"github.com/mitchellh/go-homedir"
-	"log"
-	"os"
+	"encoding/json"
 	"errors"
-	"path"
+	"fmt"
 	"github.com/aerokube/selenoid/config"
+	"github.com/mitchellh/go-homedir"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 const (
-	DefaultBrowsersXmlURL = "https://raw.githubusercontent.com/aerokube/cm/master/browsers.json"
-	Firefox = "firefox"
-	Chrome = "chrome"
-	Opera = "opera"
-	InternetExplorer = "internet_explorer"
-	BrowserNames = []string{
-		Firefox,
-		Chrome,
-		Opera,
-		InternetExplorer,
-	}
-	Commands = map[string] string {
-		Firefox: "firefox --version",
-		Chrome: "google-chrome --version",
-		Opera: "opera --version",
-		
-		//TODO: use golang registry and _windows.go file https://godoc.org/golang.org/x/sys/windows/registry
-		InternetExplorer: `reg query "HKEY_LOCAL_MACHINE\Software\Microsoft\Internet Explorer" /v svcVersion`,
-	}
-	
-	ZipMagicHeader = "504b"
-	GzipMagicHeader = "1f8b"
-	
-	ConfigDir = "~/.aerokube/selenoid"
+	DefaultBrowsersJsonURL = "https://raw.githubusercontent.com/aerokube/cm/master/browsers.json"
+
+	zipMagicHeader  = "504b"
+	gzipMagicHeader = "1f8b"
 )
 
-type Browsers struct {
-	Browsers map[string] Versions `json:"browsers"`
-	Drivers map[string] Platforms `json:"drivers"`
+type Browsers map[string]Browser
+
+type Browser struct {
+	TestCommand string `json:"test"`
+	Command     string `json:"command"`
+	Files       Files  `json:"files"`
 }
 
-type Versions map[string] string
+type Files map[string]Architectures
 
-type Platforms map[string] Architectures
-
-type Architectures map[string] Driver
+type Architectures map[string]Driver
 
 type Driver struct {
-	URL string `json:"url"`
+	URL      string `json:"url"`
 	Filename string `json:"filename"`
-	Command string `json:"command"`
 }
 
-type existingDriver struct {
+type downloadedDriver struct {
 	BrowserName string
-	Version string
-	DriverPath  string
-	Driver      *Driver
+	Command     string
 }
 
-func Configure() (string, error) {
-	browsers, err := loadAvailableBrowsers()
-	if (err != nil) {
-		return "", fmt.Errorf("failed to configure: %v\n", err)
-	}
-	configDir, err := prepareConfigDir()
-	if (err != nil) {
-		return fmt.Errorf("failed to prepare config dir: %v\n", err)
-	}
-	existingDrivers := getDrivers(browsers)
-	for _, ed := range existingDrivers {
-		log.Printf("Downloading %s %s driver from %s...\n", ed.BrowserName, ed.Version, ed.Driver.URL)
-		driverPath, err := downloadDriver(ed.Driver, configDir)
-		if (err != nil) {
-			return "", fmt.Errorf("failed to download driver: %v\n", err)
-		}
-		ed.DriverPath = driverPath
-	}
-	return generateConfig(existingDrivers)
+type DriversConfigurator struct {
+	BaseConfigurator
+	ConfigDir       string //Default should be ~/.aerokube/selenoid
+	BrowsersJsonUrl string
+	Download        bool
 }
 
-func generateConfig(existingDrivers []*existingDriver) (string, error) {
-	browsers := make(map[string]config.Versions)
-	for _, ed := range existingDrivers {
-		driver := ed.Driver
-		cmd := strings.Split(driver.Command, " ")
+func NewDriversConfigurator(configDir string, browsersJsonUrl string, download bool) *DriversConfigurator {
+	return &DriversConfigurator{ConfigDir: configDir, BrowsersJsonUrl: browsersJsonUrl, Download: download}
+}
+
+func (c *DriversConfigurator) Configure() *SelenoidConfig {
+	browsers := c.loadAvailableBrowsers()
+	if browsers == nil {
+		return nil
+	}
+	configDir, err := c.prepareConfigDir()
+	if err != nil {
+		c.Printf("failed to prepare config dir: %v\n", err)
+		return nil
+	}
+	downloadedDrivers := c.downloadDrivers(browsers, configDir)
+	cfg := generateConfig(downloadedDrivers)
+	return &cfg
+}
+
+func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {
+	browsers := make(SelenoidConfig)
+	for _, dd := range downloadedDrivers {
+		cmd := strings.Fields(dd.Command)
 		versions := config.Versions{
-			Default: ed.Version,
+			Default: latest,
 			Versions: map[string]*config.Browser{
-				ed.Version: {
+				latest: {
 					Image: cmd,
-					Port: 4444, //That's a convention
 				},
 			},
 		}
-		browsers[ed.BrowserName] = versions
+		browsers[dd.BrowserName] = versions
 	}
-	data, err := json.Marshal(browsers)
-	if (err != nil) {
-		return "", fmt.Errorf("failed to generate config json: %v\n", err)
-	}
-	return string(data), nil
+	return browsers
 }
 
-func loadAvailableBrowsers() (*Browsers, error) {
-	data, err := downloadFile(DefaultBrowsersXmlURL)
-	if (err != nil) {
-		return nil, fmt.Errorf("browsers data download error: %v\n", err)
+func (c *DriversConfigurator) loadAvailableBrowsers() *Browsers {
+	data, err := downloadFile(c.BrowsersJsonUrl)
+	if err != nil {
+		c.Printf("browsers data download error: %v\n", err)
+		return nil
 	}
 	var browsers Browsers
-	err = json.Unmarshal(data, browsers)
-	if (err != nil) {
-		return nil, fmt.Errorf("browsers data read error: %v\n", err)
+	err = json.Unmarshal(data, &browsers)
+	if err != nil {
+		c.Printf("browsers data read error: %v\n", err)
+		return nil
 	}
-	return browsers, nil
+	return &browsers
 }
 
 func downloadFile(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	defer resp.Body.Close()
-	if (err != nil) {
+	if resp.StatusCode != 200 {
+		err = fmt.Errorf("unexpected response code: %d", resp.StatusCode)
+	}
+	if err != nil {
 		return nil, fmt.Errorf("file download error: %v\n", err)
 	}
 	data, _ := ioutil.ReadAll(resp.Body)
 	return data, nil
 }
 
-func prepareConfigDir() (string, error) {
-	homeDir, err := homedir.Expand(ConfigDir)
-	if (err != nil) {
+func (c *DriversConfigurator) prepareConfigDir() (string, error) {
+	homeDir, err := homedir.Expand(c.ConfigDir)
+	if err != nil {
 		return "", fmt.Errorf("failed to determine config directory: %v\n", err)
 	}
 	err = os.MkdirAll(homeDir, os.ModePerm)
-	if (err != nil) {
+	if err != nil {
 		return "", fmt.Errorf("failed to create config directory: %v\n", err)
 	}
 	return homeDir, nil
 }
 
-func downloadDriver(driver *Driver, dir string) (string, error) {
-	data, err := downloadFile(driver.URL)
-	if (err != nil) {
-		return "", fmt.Errorf("failed to download driver archive: %v\n", err)
+func (c *DriversConfigurator) downloadDriver(driver *Driver, dir string) (string, error) {
+	if c.Download {
+		log.Printf("Downloading driver from %s...\n", driver.URL)
+		data, err := downloadFile(driver.URL)
+		if err != nil {
+			return "", fmt.Errorf("failed to download driver archive: %v\n", err)
+		}
+		return extractFile(data, driver.Filename, dir)
 	}
-	return extractFile(data, driver.Filename, dir)
+	return driver.Filename, nil
 }
 
 func getMagicHeader(data []byte) string {
-	if (len(data) >= 2) {
+	if len(data) >= 2 {
 		return hex.EncodeToString(data[:2])
 	}
 	return ""
 }
 
 func isZipFile(data []byte) bool {
-	return getMagicHeader(data) == ZipMagicHeader
+	return getMagicHeader(data) == zipMagicHeader
 }
 
-func isGzipFile(data []byte) bool {
-	return getMagicHeader(data) == GzipMagicHeader
+func isTarGzFile(data []byte) bool {
+	return getMagicHeader(data) == gzipMagicHeader
 }
 
-func extractFile(data []byte, filename string, outputDir string) error {
+func extractFile(data []byte, filename string, outputDir string) (string, error) {
 	if isZipFile(data) {
 		return unzip(data, filename, outputDir)
-	} else if isGzipFile(data) {
-		return gunzip(data, filename, outputDir)
+	} else if isTarGzFile(data) {
+		return untar(data, filename, outputDir)
 	}
-	return errors.New("Unknown archive type")
+	return "", errors.New("Unknown archive type")
 }
 
-func unzip(data []byte, filename string, outputDir string) (string, error) {
-	//TODO: to be implemented!
-	return path.Join(outputDir, filename), nil
+// Based on http://stackoverflow.com/questions/20357223/easy-way-to-unzip-file-with-golang
+func unzip(data []byte, fileName string, outputDir string) (string, error) {
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+
+	// Closure to address file descriptors issue with all the deferred .Close() methods
+	extractAndWriteFile := func(f *zip.File) (string, error) {
+		rc, err := f.Open()
+		if err != nil {
+			return "", err
+		}
+		defer rc.Close()
+
+		outputPath := filepath.Join(outputDir, f.Name)
+
+		if f.FileInfo().IsDir() {
+			return "", fmt.Errorf("can only unzip files but %s is a directory", f.Name)
+		}
+
+		err = outputFile(outputPath, f.Mode(), rc)
+		if err != nil {
+			return "", err
+		}
+		return outputPath, nil
+	}
+
+	if err == nil {
+		for _, f := range zr.File {
+			if f.Name == fileName {
+				return extractAndWriteFile(f)
+			}
+		}
+		err = fmt.Errorf("file %s does not exist in archive", fileName)
+	}
+
+	return "", err
 }
 
-func gunzip(data []byte, filename string, outputDir string) (string, error) {
-	//TODO: to be implemented!
-	return path.Join(outputDir, filename), nil
+// Based on https://medium.com/@skdomino/taring-untaring-files-in-go-6b07cf56bc07
+func untar(data []byte, fileName string, outputDir string) (string, error) {
+
+	gzr, err := gzip.NewReader(bytes.NewReader(data))
+	defer gzr.Close()
+
+	extractAndWriteFile := func(tr *tar.Reader, header *tar.Header) (string, error) {
+
+		outputPath := filepath.Join(outputDir, header.Name)
+
+		if header.Typeflag == tar.TypeDir {
+			return "", fmt.Errorf("can only untar files but %s is a directory", header.Name)
+		}
+
+		err = outputFile(outputPath, os.FileMode(header.Mode), tr)
+		if err != nil {
+			return "", err
+		}
+		return outputPath, nil
+	}
+
+	if err == nil {
+		tr := tar.NewReader(gzr)
+
+		for {
+			header, err := tr.Next()
+			switch {
+			case err == io.EOF:
+				break
+			case err != nil:
+				return "", err
+			case header == nil:
+				continue
+			}
+			return extractAndWriteFile(tr, header)
+		}
+		err = fmt.Errorf("file %s does not exist in archive", fileName)
+	}
+
+	return "", err
 }
 
-func getDrivers(browsers *Browsers) []*existingDriver {
-	ret := []*existingDriver{}
-	for _, browserName := range BrowserNames {
-		if existingDriver := getDriver(browserName, browsers); existingDriver != nil {
-			ret = append(ret, existingDriver)
+func outputFile(outputPath string, mode os.FileMode, r io.Reader) error {
+	os.MkdirAll(filepath.Dir(outputPath), mode)
+	f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = io.Copy(f, r)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *DriversConfigurator) downloadDrivers(browsers *Browsers, configDir string) []downloadedDriver {
+	ret := []downloadedDriver{}
+loop:
+	for browserName, browser := range *browsers {
+		if isBrowserPresent(browser) {
+			goos := runtime.GOOS
+			goarch := runtime.GOARCH
+			if architectures, ok := browser.Files[goos]; ok {
+				if driver, ok := architectures[goarch]; ok {
+					log.Printf("Processing %s...\n", browserName)
+					driverPath, err := c.downloadDriver(&driver, configDir)
+					if err != nil {
+						log.Printf("Failed to download %s driver: %v\n", browserName, err)
+						continue loop
+					}
+					command := fmt.Sprintf(browser.Command, driverPath)
+					ret = append(ret, downloadedDriver{
+						BrowserName: browserName,
+						Command:     command,
+					})
+				}
+			}
+
 		}
 	}
 	return ret
 }
 
-func getDriver(browserName string, browsers *Browsers) *existingDriver {
-	version := getBrowserVersion(browserName)
-	if (version != "") {
-		goos := runtime.GOOS
-		goarch := runtime.GOARCH
-		versions, _ := browsers.Browsers[browserName]
-		for v, driverKey := range versions {
-			if (strings.Contains(version, v)) {
-				if platforms, ok := browsers.Drivers[driverKey]; ok {
-					if architectures, ok := platforms[goos]; ok {
-						if driver, ok := architectures[goarch]; ok {
-							return &existingDriver{
-								BrowserName: browserName,
-								Version: version,
-								Driver: &driver,
-							}
-						}
-					}
-				} else {
-					log.Printf("Unsupported driver key: %s. This is probably a bug.\n", driverKey)
-				}
-			}
-		}
-		log.Printf("Skipping unsupported browser: %s %s %s %s\n", browserName, version, goos, goarch)
-	}
-	return nil
-}
-
-func getBrowserVersion(browserName string) string {
-	return runCommand(Commands[browserName])
-}
-
-func runCommand(command string) string {
-	output, err := exec.Command(command).Output()
-	if (err != nil) {
-		return ""
-	}
-	return output
+func isBrowserPresent(browser Browser) bool {
+	cmd := exec.Command(browser.TestCommand)
+	cmd.Start()
+	cmd.Wait()
+	return cmd.ProcessState.Success()
 }

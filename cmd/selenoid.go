@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/aerokube/cm/selenoid"
 	"github.com/spf13/cobra"
@@ -11,11 +12,10 @@ const (
 	registryUrl = "https://registry.hub.docker.com"
 )
 
-
 var (
 	lastVersions int
-	pull  bool
-	tmpfs int
+	pull         bool
+	tmpfs        int
 )
 
 func init() {
@@ -30,7 +30,9 @@ var selenoidCmd = &cobra.Command{
 	Use:   "selenoid",
 	Short: "Generate JSON configuration for Selenoid",
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := selenoid.NewConfigurator(registry, quiet)
+
+		//TODO: determine whether Docker is installed and use respective configurator
+		cfg, err := selenoid.NewDockerConfigurator(registry, quiet)
 		cfg.LastVersions = lastVersions
 		cfg.Pull = pull
 		cfg.Tmpfs = tmpfs
@@ -39,12 +41,19 @@ var selenoidCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		defer cfg.Close()
-		data, err := cfg.Configure()
+
+		browsers := cfg.Configure()
 		if err != nil {
-			fmt.Printf("Failed to configure: %v\n", err)
+			fmt.Printf("Failed to configure: %v", err)
 			os.Exit(1)
 		}
-		fmt.Println(data)
+
+		data, err := json.MarshalIndent(*browsers, "", "    ")
+		if err != nil {
+			fmt.Printf("Failed to output Selenoid config: %v", err)
+			os.Exit(1)
+		}
+		fmt.Println(string(data))
 		os.Exit(0)
 	},
 }

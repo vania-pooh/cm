@@ -6,11 +6,11 @@ type Configurator interface {
 	Configure() *SelenoidConfig
 }
 
-type BaseConfigurator struct {
+type Logger struct {
 	Quiet bool
 }
 
-func (c *BaseConfigurator) Printf(format string, v ...interface{}) {
+func (c *Logger) Printf(format string, v ...interface{}) {
 	if !c.Quiet {
 		log.Printf(format, v...)
 	}

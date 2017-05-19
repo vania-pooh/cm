@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	latest   = "latest"
+	Latest = "latest"
 	firefox  = "firefox"
 	opera    = "opera"
 	tag_1216 = "12.16"
@@ -26,7 +26,7 @@ const (
 type SelenoidConfig map[string]config.Versions
 
 type DockerConfigurator struct {
-	BaseConfigurator
+	Logger
 	LastVersions int
 	Pull         bool
 	RegistryUrl  string
@@ -37,9 +37,7 @@ type DockerConfigurator struct {
 
 func NewDockerConfigurator(registryUrl string, quiet bool) (*DockerConfigurator, error) {
 	c := &DockerConfigurator{
-		BaseConfigurator: BaseConfigurator{
-			Quiet: quiet,
-		},
+		Logger: Logger{Quiet: quiet},
 		RegistryUrl: registryUrl,
 	}
 	if c.Quiet {
@@ -130,7 +128,7 @@ func (c *DockerConfigurator) fetchImageTags(image string) []string {
 func filterOutLatest(tags []string) []string {
 	ret := []string{}
 	for _, tag := range tags {
-		if tag != latest {
+		if tag != Latest {
 			ret = append(ret, tag)
 		}
 	}

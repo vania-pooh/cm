@@ -48,7 +48,7 @@ type downloadedDriver struct {
 }
 
 type DriversConfigurator struct {
-	BaseConfigurator
+	Logger
 	ConfigDir       string //Default should be ~/.aerokube/selenoid
 	Browsers        string
 	BrowsersJsonUrl string
@@ -57,9 +57,7 @@ type DriversConfigurator struct {
 
 func NewDriversConfigurator(configDir string, browsers string, browsersJsonUrl string, download bool, quiet bool) *DriversConfigurator {
 	return &DriversConfigurator{
-		BaseConfigurator: BaseConfigurator{
-			Quiet: quiet,
-		},
+		Logger: Logger{Quiet: quiet},
 		ConfigDir:       configDir,
 		Browsers:        browsers,
 		BrowsersJsonUrl: browsersJsonUrl,
@@ -87,9 +85,9 @@ func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {
 	for _, dd := range downloadedDrivers {
 		cmd := strings.Fields(dd.Command)
 		versions := config.Versions{
-			Default: latest,
+			Default: Latest,
 			Versions: map[string]*config.Browser{
-				latest: {
+				Latest: {
 					Image: cmd,
 				},
 			},

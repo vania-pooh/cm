@@ -121,17 +121,17 @@ func TestConfigureDrivers(t *testing.T) {
 	unpackedSecondFile := path.Join(dir, "gzip-testfile")
 	correctConfig := SelenoidConfig{
 		"first": config.Versions{
-			Default: latest,
+			Default: Latest,
 			Versions: map[string]*config.Browser{
-				latest: {
+				Latest: {
 					Image: []string{unpackedFirstFile},
 				},
 			},
 		},
 		"second": config.Versions{
-			Default: latest,
+			Default: Latest,
 			Versions: map[string]*config.Browser{
-				latest: {
+				Latest: {
 					Image: []string{unpackedSecondFile},
 				},
 			},

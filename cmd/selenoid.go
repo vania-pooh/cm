@@ -24,7 +24,7 @@ func init() {
 	selenoidCmd.Flags().IntVarP(&lastVersions, "last-versions", "l", 5, "process only last N versions")
 	selenoidCmd.Flags().BoolVarP(&pull, "pull", "p", false, "pull images if not present")
 	selenoidCmd.Flags().IntVarP(&tmpfs, "tmpfs", "t", 0, "add tmpfs volume sized in megabytes")
-	selenoidCmd.AddCommand(driversCmd)
+	selenoidCmd.AddCommand(selenoidDriversCmd)
 }
 
 var selenoidCmd = &cobra.Command{

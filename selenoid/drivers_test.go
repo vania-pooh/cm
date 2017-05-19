@@ -2,6 +2,7 @@ package selenoid
 
 import (
 	"encoding/json"
+	"fmt"
 	. "github.com/aandryashin/matchers"
 	"github.com/aerokube/selenoid/config"
 	"io/ioutil"
@@ -13,7 +14,6 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
-	"fmt"
 )
 
 var (
@@ -33,8 +33,7 @@ func driversMux() http.Handler {
 			goarch := runtime.GOARCH
 			browsers := Browsers{
 				"first": Browser{
-					TestCommand: "true",
-					Command:     "%s",
+					Command: "%s",
 					Files: Files{
 						goos: {
 							goarch: Driver{
@@ -45,8 +44,7 @@ func driversMux() http.Handler {
 					},
 				},
 				"second": Browser{
-					TestCommand: "true",
-					Command:     "%s",
+					Command: "%s",
 					Files: Files{
 						goos: {
 							goarch: Driver{
@@ -90,7 +88,7 @@ func TestAllUrlsAreValid(t *testing.T) {
 					CheckRedirect: func(req *http.Request, via []*http.Request) error {
 						/*
 							Do not follow redirects in order to avoid 403 Forbidden responses from S3 when checking Github releases links
-						 */
+						*/
 						return http.ErrUseLastResponse
 					},
 				}
@@ -115,7 +113,7 @@ func TestConfigureDrivers(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	browsersJsonUrl := mockServerUrl("/browsers.json")
-	configurator := NewDriversConfigurator(dir, browsersJsonUrl, true, false)
+	configurator := NewDriversConfigurator(dir, "", browsersJsonUrl, true, false)
 	cfg := *configurator.Configure()
 	AssertThat(t, len(cfg), EqualTo{2})
 

@@ -16,7 +16,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -30,9 +29,8 @@ const (
 type Browsers map[string]Browser
 
 type Browser struct {
-	TestCommand string `json:"test"`
-	Command     string `json:"command"`
-	Files       Files  `json:"files"`
+	Command string `json:"command"`
+	Files   Files  `json:"files"`
 }
 
 type Files map[string]Architectures
@@ -52,18 +50,20 @@ type downloadedDriver struct {
 type DriversConfigurator struct {
 	BaseConfigurator
 	ConfigDir       string //Default should be ~/.aerokube/selenoid
+	Browsers        string
 	BrowsersJsonUrl string
 	Download        bool
 }
 
-func NewDriversConfigurator(configDir string, browsersJsonUrl string, download bool, quiet bool) *DriversConfigurator {
+func NewDriversConfigurator(configDir string, browsers string, browsersJsonUrl string, download bool, quiet bool) *DriversConfigurator {
 	return &DriversConfigurator{
 		BaseConfigurator: BaseConfigurator{
 			Quiet: quiet,
 		},
-		ConfigDir: configDir,
+		ConfigDir:       configDir,
+		Browsers:        browsers,
 		BrowsersJsonUrl: browsersJsonUrl,
-		Download: download,
+		Download:        download,
 	}
 }
 
@@ -273,17 +273,24 @@ func outputFile(outputPath string, mode os.FileMode, r io.Reader) error {
 
 func (c *DriversConfigurator) downloadDrivers(browsers *Browsers, configDir string) []downloadedDriver {
 	ret := []downloadedDriver{}
+	requestedBrowsers := make(map[string]struct{})
+	if c.Browsers != "" {
+		for _, rb := range strings.Fields(c.Browsers) {
+			requestedBrowsers[rb] = struct{}{}
+		}
+	}
+	processAllBrowsers := len(requestedBrowsers) == 0
 loop:
 	for browserName, browser := range *browsers {
-		if c.isBrowserPresent(browser) {
+		if _, ok := requestedBrowsers[browserName]; processAllBrowsers || ok {
 			goos := runtime.GOOS
 			goarch := runtime.GOARCH
 			if architectures, ok := browser.Files[goos]; ok {
 				if driver, ok := architectures[goarch]; ok {
-					log.Printf("Processing %s...\n", browserName)
+					c.Printf("Processing %s...\n", browserName)
 					driverPath, err := c.downloadDriver(&driver, configDir)
 					if err != nil {
-						log.Printf("Failed to download %s driver: %v\n", browserName, err)
+						c.Printf("Failed to download %s driver: %v\n", browserName, err)
 						continue loop
 					}
 					command := fmt.Sprintf(browser.Command, driverPath)
@@ -294,18 +301,9 @@ loop:
 				}
 			}
 
+		} else {
+			c.Printf("Unsupported browser: %s\n", browserName)
 		}
 	}
 	return ret
-}
-
-func (c *DriversConfigurator) isBrowserPresent(browser Browser) bool {
-	command := browser.TestCommand
-	cmd := exec.Command(command)
-	err := cmd.Run()
-	if err != nil {
-		c.Printf("failed to execute command [%s]: %v\n", command, err)
-		return false
-	}
-	return cmd.ProcessState.Success()
 }

@@ -15,14 +15,16 @@ const (
 )
 
 var (
-	browsers string
-	configDir string
-	download bool
+	browsers        string
+	browsersJSONUrl string
+	configDir       string
+	download        bool
 )
 
 func init() {
 	driversCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "suppress output")
-	driversCmd.Flags().StringVarP(&browsers, "browsers", "b", defaultBrowsersJsonURL, "browsers JSON data URL (in most cases never need to be set manually)")
+	driversCmd.Flags().StringVarP(&browsers, "browsers", "b", "", "comma separated list of browser names to process")
+	driversCmd.Flags().StringVarP(&browsersJSONUrl, "browsers-json", "j", defaultBrowsersJsonURL, "browsers JSON data URL (in most cases never need to be set manually)")
 	usr, err := user.Current()
 	if err != nil {
 		fmt.Println("Failed to determine current user")
@@ -37,10 +39,10 @@ var driversCmd = &cobra.Command{
 	Short: "Download drivers and generate JSON configuration for Selenoid without Docker",
 	Run: func(cmd *cobra.Command, args []string) {
 
-		cfg := selenoid.NewDriversConfigurator(configDir, browsers, download, quiet)
+		cfg := selenoid.NewDriversConfigurator(configDir, browsers, browsersJSONUrl, download, quiet)
 
 		browsers := cfg.Configure()
-		
+
 		if browsers == nil {
 			os.Exit(1)
 		}

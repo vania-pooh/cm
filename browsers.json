@@ -1,6 +1,5 @@
 {
   "chrome": {
-    "test": "google-chrome --version",
     "command": "%s --whitelisted-ips='' --verbose",
     "files": {
       "linux": {
@@ -33,7 +32,6 @@
   },
   
   "firefox": {
-    "test": "firefox --version",
     "command": "%s --host :: --log debug",
     "files": {
       "linux": {
@@ -62,7 +60,6 @@
   },
   
   "opera": {
-    "test": "opera --version",
     "command": "%s --port=4444 --whitelisted-ips='' --verbose",
     "files": {
       "linux": {
@@ -96,7 +93,6 @@
   },
   
   "internet_explorer": {
-    "test": "C:\\Program Files\\Internet Explorer\\iexplore.exe",
     "command": "%s",
     "files": {
       "windows": {

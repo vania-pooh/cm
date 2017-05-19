@@ -38,7 +38,7 @@ type DockerConfigurator struct {
 func NewDockerConfigurator(registryUrl string, quiet bool) (*DockerConfigurator, error) {
 	c := &DockerConfigurator{
 		BaseConfigurator: BaseConfigurator{
-			Quiet:       quiet,
+			Quiet: quiet,
 		},
 		RegistryUrl: registryUrl,
 	}

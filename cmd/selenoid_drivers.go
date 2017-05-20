@@ -31,7 +31,7 @@ func init() {
 		os.Exit(1)
 	}
 	selenoidDriversCmd.Flags().StringVarP(&configDir, "config-dir", "c", filepath.Join(usr.HomeDir, ".aerokube", "selenoid"), "directory to save configuration and driver binaries")
-	selenoidDriversCmd.Flags().BoolVarP(&skipDownload, "no-download", "n", false, "whether to skip downloading drivers for installed browsers")
+	selenoidDriversCmd.Flags().BoolVarP(&skipDownload, "no-download", "n", false, "whether to not download drivers")
 }
 
 var selenoidDriversCmd = &cobra.Command{

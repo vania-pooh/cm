@@ -90,6 +90,7 @@ func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {
 			Versions: map[string]*config.Browser{
 				Latest: {
 					Image: cmd,
+					Path: "/",
 				},
 			},
 		}

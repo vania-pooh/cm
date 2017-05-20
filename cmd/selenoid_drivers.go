@@ -18,7 +18,7 @@ var (
 	browsers        string
 	browsersJSONUrl string
 	configDir       string
-	download        bool
+	skipDownload bool
 )
 
 func init() {
@@ -31,7 +31,7 @@ func init() {
 		os.Exit(1)
 	}
 	selenoidDriversCmd.Flags().StringVarP(&configDir, "config-dir", "c", filepath.Join(usr.HomeDir, ".aerokube", "selenoid"), "directory to save configuration and driver binaries")
-	selenoidDriversCmd.Flags().BoolVarP(&download, "download", "d", true, "whether to download drivers for installed browsers")
+	selenoidDriversCmd.Flags().BoolVarP(&skipDownload, "no-download", "n", false, "whether to skip downloading drivers for installed browsers")
 }
 
 var selenoidDriversCmd = &cobra.Command{
@@ -39,7 +39,7 @@ var selenoidDriversCmd = &cobra.Command{
 	Short: "Download drivers and generate JSON configuration for Selenoid without Docker",
 	Run: func(cmd *cobra.Command, args []string) {
 
-		cfg := selenoid.NewDriversConfigurator(configDir, browsers, browsersJSONUrl, download, quiet)
+		cfg := selenoid.NewDriversConfigurator(configDir, browsers, browsersJSONUrl, !skipDownload, quiet)
 
 		browsers := cfg.Configure()
 

@@ -124,7 +124,6 @@ func downloadShouldFail(t *testing.T, fn func(string) *Downloader) {
 	withTmpDir(t, "something", func(t *testing.T, dir string) {
 		downloader := fn(dir)
 		err := downloader.Download()
-		fmt.Printf("err = %v\n", err)
 		AssertThat(t, err, Is{Not{nil}})
 	})
 }

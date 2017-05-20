@@ -63,7 +63,7 @@ func getReleaseHandler(v string) func(http.ResponseWriter, *http.Request) {
 			Assets: []github.ReleaseAsset{
 				{
 					Name: &releaseFileName,
-					URL:  &releaseUrl,
+					BrowserDownloadURL:  &releaseUrl,
 				},
 			},
 		}

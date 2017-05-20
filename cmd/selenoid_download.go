@@ -24,13 +24,13 @@ func init() {
 		os.Exit(1)
 	}
 	selenoidDownloadCmd.Flags().StringVarP(&configDir, "config-dir", "c", filepath.Join(usr.HomeDir, ".aerokube", "selenoid"), "directory to save Selenoid binary")
-	selenoidDownloadCmd.Flags().StringVarP(&operatingSystem, "operatingSystem", "o", runtime.GOOS, "target operating system")
+	selenoidDownloadCmd.Flags().StringVarP(&operatingSystem, "operating-system", "o", runtime.GOOS, "target operating system")
 	selenoidDownloadCmd.Flags().StringVarP(&arch, "architecture", "a", runtime.GOARCH, "target architecture")
 	selenoidDownloadCmd.Flags().StringVarP(&version, "version", "v", selenoid.Latest, "desired version; empty string for latest version")
 }
 
 var selenoidDownloadCmd = &cobra.Command{
-	Use:   "donwload",
+	Use:   "download",
 	Short: "Download Selenoid latest or specified release",
 	Run: func(cmd *cobra.Command, args []string) {
 		downloader := selenoid.NewDownloader("", configDir, operatingSystem, arch, version, quiet)

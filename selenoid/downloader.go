@@ -80,7 +80,7 @@ func (d *Downloader) getUrl() (string, error) {
 	for _, asset := range release.Assets {
 		assetName := *(asset.Name)
 		if strings.Contains(assetName, d.OS) && strings.Contains(assetName, d.Arch) {
-			return *(asset.URL), nil
+			return *(asset.BrowserDownloadURL), nil
 		}
 	}
 	return "", fmt.Errorf("Selenoid binary for %s %s is not available for specified release: %s\n", strings.Title(d.OS), d.Arch, d.Version)

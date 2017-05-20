@@ -37,7 +37,7 @@ func driversMux() http.Handler {
 					Files: Files{
 						goos: {
 							goarch: Driver{
-								URL:      mockServerUrl("/testfile.zip"),
+								URL:      mockServerUrl(mockDriverServer, "/testfile.zip"),
 								Filename: "zip-testfile",
 							},
 						},
@@ -48,7 +48,7 @@ func driversMux() http.Handler {
 					Files: Files{
 						goos: {
 							goarch: Driver{
-								URL:      mockServerUrl("/testfile.tar.gz"),
+								URL:      mockServerUrl(mockDriverServer, "/testfile.tar.gz"),
 								Filename: "gzip-testfile",
 							},
 						},
@@ -106,50 +106,46 @@ func TestAllUrlsAreValid(t *testing.T) {
 
 func TestConfigureDrivers(t *testing.T) {
 
-	dir, err := ioutil.TempDir("", "test-download")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	withTmpDir(t, "test-download", func(t *testing.T, dir string) {
+		browsersJsonUrl := mockServerUrl(mockDriverServer, "/browsers.json")
+		configurator := NewDriversConfigurator(dir, "first,second,third", browsersJsonUrl, true, false)
+		cfg := *configurator.Configure()
+		AssertThat(t, len(cfg), EqualTo{2})
 
-	browsersJsonUrl := mockServerUrl("/browsers.json")
-	configurator := NewDriversConfigurator(dir, "", browsersJsonUrl, true, false)
-	cfg := *configurator.Configure()
-	AssertThat(t, len(cfg), EqualTo{2})
-
-	unpackedFirstFile := path.Join(dir, "zip-testfile")
-	unpackedSecondFile := path.Join(dir, "gzip-testfile")
-	correctConfig := SelenoidConfig{
-		"first": config.Versions{
-			Default: Latest,
-			Versions: map[string]*config.Browser{
-				Latest: {
-					Image: []string{unpackedFirstFile},
+		unpackedFirstFile := path.Join(dir, "zip-testfile")
+		unpackedSecondFile := path.Join(dir, "gzip-testfile")
+		correctConfig := SelenoidConfig{
+			"first": config.Versions{
+				Default: Latest,
+				Versions: map[string]*config.Browser{
+					Latest: {
+						Image: []string{unpackedFirstFile},
+					},
 				},
 			},
-		},
-		"second": config.Versions{
-			Default: Latest,
-			Versions: map[string]*config.Browser{
-				Latest: {
-					Image: []string{unpackedSecondFile},
+			"second": config.Versions{
+				Default: Latest,
+				Versions: map[string]*config.Browser{
+					Latest: {
+						Image: []string{unpackedSecondFile},
+					},
 				},
 			},
-		},
-	}
-
-	if !reflect.DeepEqual(cfg, correctConfig) {
-		cfgData, _ := json.MarshalIndent(cfg, "", "    ")
-		correctConfigData, _ := json.MarshalIndent(correctConfig, "", "    ")
-		t.Fatalf("Incorrect config. Expected:\n %+v\n Actual: %+v\n", string(correctConfigData), string(cfgData))
-	}
-
-	for _, unpackedFile := range []string{unpackedFirstFile, unpackedSecondFile} {
-		_, err = os.Stat(unpackedFile)
-		if os.IsNotExist(err) {
-			t.Fatalf("file %s does not exist\n", unpackedFile)
 		}
-	}
+
+		if !reflect.DeepEqual(cfg, correctConfig) {
+			cfgData, _ := json.MarshalIndent(cfg, "", "    ")
+			correctConfigData, _ := json.MarshalIndent(correctConfig, "", "    ")
+			t.Fatalf("Incorrect config. Expected:\n %+v\n Actual: %+v\n", string(correctConfigData), string(cfgData))
+		}
+
+		for _, unpackedFile := range []string{unpackedFirstFile, unpackedSecondFile} {
+			_, err := os.Stat(unpackedFile)
+			if os.IsNotExist(err) {
+				t.Fatalf("file %s does not exist\n", unpackedFile)
+			}
+		}
+	})
 
 }
 
@@ -173,26 +169,22 @@ func TestUntar(t *testing.T) {
 
 func testUnpack(t *testing.T, data []byte, fileName string, fn func([]byte, string, string) (string, error), correctContents string) {
 
-	dir, err := ioutil.TempDir("", "test-unpack")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	withTmpDir(t, "test-unpack", func(t *testing.T, dir string) {
+		unpackedFile, err := fn(data, fileName, dir)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	unpackedFile, err := fn(data, fileName, dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+		_, err = os.Stat(unpackedFile)
+		if os.IsNotExist(err) {
+			t.Fatalf("file %s does not exist\n", unpackedFile)
+		}
 
-	_, err = os.Stat(unpackedFile)
-	if os.IsNotExist(err) {
-		t.Fatalf("file %s does not exist\n", unpackedFile)
-	}
-
-	unpackedFileContents := string(readFile(t, unpackedFile))
-	if unpackedFileContents != correctContents {
-		t.Fatalf("incorrect unpacked file contents; expected: '%s', actual: '%s'\n", correctContents, unpackedFileContents)
-	}
+		unpackedFileContents := string(readFile(t, unpackedFile))
+		if unpackedFileContents != correctContents {
+			t.Fatalf("incorrect unpacked file contents; expected: '%s', actual: '%s'\n", correctContents, unpackedFileContents)
+		}
+	})
 
 }
 
@@ -205,7 +197,7 @@ func readFile(t *testing.T, fileName string) []byte {
 }
 
 func TestDownloadFile(t *testing.T) {
-	fileUrl := mockServerUrl("/testfile")
+	fileUrl := mockServerUrl(mockDriverServer, "/testfile")
 	data, err := downloadFile(fileUrl)
 	if err != nil {
 		t.Fatalf("failed to download file: %v\n", err)
@@ -213,8 +205,18 @@ func TestDownloadFile(t *testing.T) {
 	AssertThat(t, string(data), EqualTo{"test-data"})
 }
 
-func mockServerUrl(relativeUrl string) string {
-	base, _ := url.Parse(mockDriverServer.URL)
+func mockServerUrl(mockServer *httptest.Server, relativeUrl string) string {
+	base, _ := url.Parse(mockServer.URL)
 	relative, _ := url.Parse(relativeUrl)
 	return base.ResolveReference(relative).String()
+}
+
+func withTmpDir(t *testing.T, prefix string, fn func(*testing.T, string)) {
+	dir, err := ioutil.TempDir("", prefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	fn(t, dir)
+
 }

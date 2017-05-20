@@ -24,6 +24,7 @@ import (
 const (
 	zipMagicHeader  = "504b"
 	gzipMagicHeader = "1f8b"
+	comma           = ","
 )
 
 type Browsers map[string]Browser
@@ -57,7 +58,7 @@ type DriversConfigurator struct {
 
 func NewDriversConfigurator(configDir string, browsers string, browsersJsonUrl string, download bool, quiet bool) *DriversConfigurator {
 	return &DriversConfigurator{
-		Logger: Logger{Quiet: quiet},
+		Logger:          Logger{Quiet: quiet},
 		ConfigDir:       configDir,
 		Browsers:        browsers,
 		BrowsersJsonUrl: browsersJsonUrl,
@@ -271,36 +272,39 @@ func outputFile(outputPath string, mode os.FileMode, r io.Reader) error {
 
 func (c *DriversConfigurator) downloadDrivers(browsers *Browsers, configDir string) []downloadedDriver {
 	ret := []downloadedDriver{}
-	requestedBrowsers := make(map[string]struct{})
+	browsersToIterate := *browsers
 	if c.Browsers != "" {
-		for _, rb := range strings.Fields(c.Browsers) {
-			requestedBrowsers[rb] = struct{}{}
+		requestedBrowsers := strings.Split(c.Browsers, comma)
+		if len(requestedBrowsers) > 0 {
+			browsersToIterate = make(Browsers)
+			for _, rb := range requestedBrowsers {
+				if browser, ok := (*browsers)[rb]; ok {
+					browsersToIterate[rb] = browser
+					continue
+				}
+				c.Printf("unsupported browser: %s\n", rb)
+			}
 		}
 	}
-	processAllBrowsers := len(requestedBrowsers) == 0
-loop:
-	for browserName, browser := range *browsers {
-		if _, ok := requestedBrowsers[browserName]; processAllBrowsers || ok {
-			goos := runtime.GOOS
-			goarch := runtime.GOARCH
-			if architectures, ok := browser.Files[goos]; ok {
-				if driver, ok := architectures[goarch]; ok {
-					c.Printf("Processing %s...\n", browserName)
-					driverPath, err := c.downloadDriver(&driver, configDir)
-					if err != nil {
-						c.Printf("Failed to download %s driver: %v\n", browserName, err)
-						continue loop
-					}
-					command := fmt.Sprintf(browser.Command, driverPath)
-					ret = append(ret, downloadedDriver{
-						BrowserName: browserName,
-						Command:     command,
-					})
-				}
-			}
 
-		} else {
-			c.Printf("Unsupported browser: %s\n", browserName)
+loop:
+	for browserName, browser := range browsersToIterate {
+		goos := runtime.GOOS
+		goarch := runtime.GOARCH
+		if architectures, ok := browser.Files[goos]; ok {
+			if driver, ok := architectures[goarch]; ok {
+				c.Printf("Processing %s...\n", browserName)
+				driverPath, err := c.downloadDriver(&driver, configDir)
+				if err != nil {
+					c.Printf("Failed to download %s driver: %v\n", browserName, err)
+					continue loop
+				}
+				command := fmt.Sprintf(browser.Command, driverPath)
+				ret = append(ret, downloadedDriver{
+					BrowserName: browserName,
+					Command:     command,
+				})
+			}
 		}
 	}
 	return ret

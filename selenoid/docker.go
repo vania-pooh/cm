@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	Latest = "latest"
+	Latest   = "latest"
 	firefox  = "firefox"
 	opera    = "opera"
 	tag_1216 = "12.16"
@@ -37,7 +37,7 @@ type DockerConfigurator struct {
 
 func NewDockerConfigurator(registryUrl string, quiet bool) (*DockerConfigurator, error) {
 	c := &DockerConfigurator{
-		Logger: Logger{Quiet: quiet},
+		Logger:      Logger{Quiet: quiet},
 		RegistryUrl: registryUrl,
 	}
 	if c.Quiet {

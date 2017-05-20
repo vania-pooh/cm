@@ -49,7 +49,7 @@ var selenoidDriversCmd = &cobra.Command{
 
 		data, err := json.MarshalIndent(*browsers, "", "    ")
 		if err != nil {
-			fmt.Printf("Failed to output Selenoid config: %v", err)
+			cfg.Printf("failed to output Selenoid config: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Println(string(data))

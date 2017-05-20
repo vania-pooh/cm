@@ -37,20 +37,20 @@ var selenoidCmd = &cobra.Command{
 		cfg.Pull = pull
 		cfg.Tmpfs = tmpfs
 		if err != nil {
-			fmt.Printf("Failed to initialize: %v\n", err)
+			cfg.Printf("failed to initialize: %v\n", err)
 			os.Exit(1)
 		}
 		defer cfg.Close()
 
 		browsers := cfg.Configure()
 		if err != nil {
-			fmt.Printf("Failed to configure: %v", err)
+			cfg.Printf("failed to configure: %v\n", err)
 			os.Exit(1)
 		}
 
 		data, err := json.MarshalIndent(*browsers, "", "    ")
 		if err != nil {
-			fmt.Printf("Failed to output Selenoid config: %v", err)
+			cfg.Printf("failed to output Selenoid config: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Println(string(data))

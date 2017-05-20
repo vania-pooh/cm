@@ -1,39 +1,39 @@
 package selenoid
 
 import (
-	"os"
-	"net/http"
-	"path/filepath"
-	"io"
 	"fmt"
-	"github.com/google/go-github/github"
 	"github.com/docker/distribution/context"
-	"strings"
+	"github.com/google/go-github/github"
+	"io"
+	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 const (
 	owner = "aerokube"
-	repo = "selenoid"
+	repo  = "selenoid"
 )
 
 type Downloader struct {
 	Logger
 	GithubBaseUrl string
-	OutputDir string
-	OS string
-	Arch string
-	Version string
+	OutputDir     string
+	OS            string
+	Arch          string
+	Version       string
 }
 
 func NewDownloader(githubBaseUrl string, outputDir string, os string, arch string, version string, quiet bool) *Downloader {
 	return &Downloader{
-		Logger: Logger{Quiet: quiet},
+		Logger:        Logger{Quiet: quiet},
 		GithubBaseUrl: githubBaseUrl,
-		OutputDir: outputDir,
-		OS: os,
-		Arch: arch,
-		Version: version,
+		OutputDir:     outputDir,
+		OS:            os,
+		Arch:          arch,
+		Version:       version,
 	}
 }
 
@@ -51,6 +51,7 @@ func (d *Downloader) Download() error {
 }
 
 func (d *Downloader) getUrl() (string, error) {
+	d.Printf("getting Selenoid release information for version: %s\n", d.Version)
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	if d.GithubBaseUrl != "" {
@@ -67,15 +68,15 @@ func (d *Downloader) getUrl() (string, error) {
 	} else {
 		release, _, err = client.Repositories.GetLatestRelease(ctx, owner, repo)
 	}
-	
+
 	if err != nil {
 		return "", err
 	}
-	
+
 	if release == nil {
 		return "", fmt.Errorf("unknown release: %s\n", d.Version)
 	}
-	
+
 	for _, asset := range release.Assets {
 		assetName := *(asset.Name)
 		if strings.Contains(assetName, d.OS) && strings.Contains(assetName, d.Arch) {

@@ -1,19 +1,19 @@
 package cmd
 
 import (
-	"os/user"
 	"fmt"
-	"os"
-	"path/filepath"
-	"github.com/spf13/cobra"
 	"github.com/aerokube/cm/selenoid"
+	"github.com/spf13/cobra"
+	"os"
+	"os/user"
+	"path/filepath"
 	"runtime"
 )
 
 var (
 	operatingSystem string
-	arch string
-	version string
+	arch            string
+	version         string
 )
 
 func init() {
@@ -36,10 +36,9 @@ var selenoidDownloadCmd = &cobra.Command{
 		downloader := selenoid.NewDownloader("", configDir, operatingSystem, arch, version, quiet)
 		err := downloader.Download()
 		if err != nil {
+			downloader.Printf("failed to download Selenoid release: %v\n", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
 	},
 }
-
-

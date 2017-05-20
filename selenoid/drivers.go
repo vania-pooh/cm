@@ -134,6 +134,7 @@ func downloadFileWithProgressBar(url string, w io.Writer) error {
 	defer resp.Body.Close()
 
 	bar := pb.New(int(resp.ContentLength)).SetUnits(pb.U_BYTES)
+	bar.Output = os.Stderr
 	bar.Start()
 	defer bar.Finish()
 

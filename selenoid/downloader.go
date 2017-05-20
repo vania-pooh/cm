@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"github.com/docker/distribution/context"
 	"github.com/google/go-github/github"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -19,8 +17,8 @@ const (
 
 type Downloader struct {
 	Logger
+	OutputDirAware
 	GithubBaseUrl string
-	OutputDir     string
 	OS            string
 	Arch          string
 	Version       string
@@ -28,12 +26,12 @@ type Downloader struct {
 
 func NewDownloader(githubBaseUrl string, outputDir string, os string, arch string, version string, quiet bool) *Downloader {
 	return &Downloader{
-		Logger:        Logger{Quiet: quiet},
-		GithubBaseUrl: githubBaseUrl,
-		OutputDir:     outputDir,
-		OS:            os,
-		Arch:          arch,
-		Version:       version,
+		Logger:         Logger{Quiet: quiet},
+		OutputDirAware: OutputDirAware{OutputDir: outputDir},
+		GithubBaseUrl:  githubBaseUrl,
+		OS:             os,
+		Arch:           arch,
+		Version:        version,
 	}
 }
 
@@ -41,6 +39,11 @@ func (d *Downloader) Download() error {
 	u, err := d.getUrl()
 	if err != nil {
 		return fmt.Errorf("failed to get download URL for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
+	}
+	err = d.createOutputDir()
+	if err != nil {
+		d.Printf("failed to create output directory: %v\n", err)
+		return nil
 	}
 	outputFile, err := d.downloadFile(u)
 	if err != nil {
@@ -88,12 +91,6 @@ func (d *Downloader) getUrl() (string, error) {
 
 func (d *Downloader) downloadFile(url string) (string, error) {
 	d.Printf("downloading Selenoid release from %s\n", url)
-	response, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer response.Body.Close()
-
 	outputPath := filepath.Join(d.OutputDir, "selenoid")
 	f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
@@ -101,10 +98,10 @@ func (d *Downloader) downloadFile(url string) (string, error) {
 	}
 	defer f.Close()
 
-	_, err = io.Copy(f, response.Body)
+	err = downloadFileWithProgressBar(url, f)
 	if err != nil {
 		return "", err
 	}
-	d.Printf("Selenoid binary saved to %s. Don't forget to add %s to PATH, e.g.:\n $ export PATH=\"$PATH:%s\".\n", outputPath, d.OutputDir, d.OutputDir)
+	d.Printf("Selenoid binary saved to %s\n", outputPath)
 	return outputPath, nil
 }

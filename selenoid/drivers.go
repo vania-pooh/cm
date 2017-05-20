@@ -3,6 +3,7 @@ package selenoid
 import (
 	"archive/tar"
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/hex"
@@ -10,9 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aerokube/selenoid/config"
-	"github.com/mitchellh/go-homedir"
+	"gopkg.in/cheggaaa/pb.v1"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -50,16 +50,16 @@ type downloadedDriver struct {
 
 type DriversConfigurator struct {
 	Logger
-	ConfigDir       string //Default should be ~/.aerokube/selenoid
+	OutputDirAware
 	Browsers        string
 	BrowsersJsonUrl string
 	Download        bool
 }
 
-func NewDriversConfigurator(configDir string, browsers string, browsersJsonUrl string, download bool, quiet bool) *DriversConfigurator {
+func NewDriversConfigurator(outputDir string, browsers string, browsersJsonUrl string, download bool, quiet bool) *DriversConfigurator {
 	return &DriversConfigurator{
 		Logger:          Logger{Quiet: quiet},
-		ConfigDir:       configDir,
+		OutputDirAware:  OutputDirAware{OutputDir: outputDir},
 		Browsers:        browsers,
 		BrowsersJsonUrl: browsersJsonUrl,
 		Download:        download,
@@ -71,12 +71,12 @@ func (c *DriversConfigurator) Configure() *SelenoidConfig {
 	if browsers == nil {
 		return nil
 	}
-	configDir, err := c.prepareConfigDir()
+	err := c.createOutputDir()
 	if err != nil {
-		c.Printf("failed to prepare config dir: %v\n", err)
+		c.Printf("failed to create output directory: %v\n", err)
 		return nil
 	}
-	downloadedDrivers := c.downloadDrivers(browsers, configDir)
+	downloadedDrivers := c.downloadDrivers(browsers, c.OutputDir)
 	cfg := generateConfig(downloadedDrivers)
 	return &cfg
 }
@@ -116,28 +116,44 @@ func (c *DriversConfigurator) loadAvailableBrowsers() *Browsers {
 }
 
 func downloadFile(url string) ([]byte, error) {
-	resp, err := http.Get(url)
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		err = fmt.Errorf("unexpected response code: %d", resp.StatusCode)
-	}
+	var b bytes.Buffer
+	w := bufio.NewWriter(&b)
+	err := downloadFileWithProgressBar(url, w)
 	if err != nil {
-		return nil, fmt.Errorf("file download error: %v\n", err)
+		return nil, err
 	}
-	data, _ := ioutil.ReadAll(resp.Body)
-	return data, nil
+	w.Flush()
+	return b.Bytes(), nil
+}
+
+func downloadFileWithProgressBar(url string, w io.Writer) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("file download error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	bar := pb.New(int(resp.ContentLength)).SetUnits(pb.U_BYTES)
+	bar.Start()
+	defer bar.Finish()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("unexpected response code: %d", resp.StatusCode)
+	}
+	writer := io.MultiWriter(w, bar)
+	_, err = io.Copy(writer, resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to save file: %v", err)
+	}
+	return nil
 }
 
 func (c *DriversConfigurator) prepareConfigDir() (string, error) {
-	homeDir, err := homedir.Expand(c.ConfigDir)
-	if err != nil {
-		return "", fmt.Errorf("failed to determine config directory: %v\n", err)
-	}
-	err = os.MkdirAll(homeDir, os.ModePerm)
+	err := os.MkdirAll(c.OutputDir, os.ModePerm)
 	if err != nil {
 		return "", fmt.Errorf("failed to create config directory: %v\n", err)
 	}
-	return homeDir, nil
+	return c.OutputDir, nil
 }
 
 func (c *DriversConfigurator) downloadDriver(driver *Driver, dir string) (string, error) {

@@ -13,7 +13,6 @@ import (
 	"github.com/aerokube/selenoid/config"
 	"gopkg.in/cheggaaa/pb.v1"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -152,11 +151,12 @@ func downloadFileWithProgressBar(url string, w io.Writer) error {
 
 func (c *DriversConfigurator) downloadDriver(driver *Driver, dir string) (string, error) {
 	if c.Download {
-		log.Printf("Downloading driver from %s...\n", driver.URL)
+		c.Printf("Downloading driver from %s...\n", driver.URL)
 		data, err := downloadFile(driver.URL)
 		if err != nil {
 			return "", fmt.Errorf("failed to download driver archive: %v\n", err)
 		}
+		c.Printf("Unpacking archive to %s...\n", dir)
 		return extractFile(data, driver.Filename, dir)
 	}
 	return driver.Filename, nil
@@ -266,7 +266,7 @@ func untar(data []byte, fileName string, outputDir string) (string, error) {
 }
 
 func outputFile(outputPath string, mode os.FileMode, r io.Reader) error {
-	os.MkdirAll(filepath.Dir(outputPath), mode)
+	os.MkdirAll(filepath.Dir(outputPath), 0755)
 	f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
 		return err
@@ -303,10 +303,10 @@ loop:
 		goarch := runtime.GOARCH
 		if architectures, ok := browser.Files[goos]; ok {
 			if driver, ok := architectures[goarch]; ok {
-				c.Printf("Processing %s...\n", browserName)
+				c.Printf("Processing %s...\n", strings.Title(browserName))
 				driverPath, err := c.downloadDriver(&driver, configDir)
 				if err != nil {
-					c.Printf("Failed to download %s driver: %v\n", browserName, err)
+					c.Printf("Failed to download %s driver: %v\n", strings.Title(browserName), err)
 					continue loop
 				}
 				command := fmt.Sprintf(browser.Command, driverPath)

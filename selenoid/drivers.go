@@ -149,14 +149,6 @@ func downloadFileWithProgressBar(url string, w io.Writer) error {
 	return nil
 }
 
-func (c *DriversConfigurator) prepareConfigDir() (string, error) {
-	err := os.MkdirAll(c.OutputDir, os.ModePerm)
-	if err != nil {
-		return "", fmt.Errorf("failed to create config directory: %v\n", err)
-	}
-	return c.OutputDir, nil
-}
-
 func (c *DriversConfigurator) downloadDriver(driver *Driver, dir string) (string, error) {
 	if c.Download {
 		log.Printf("Downloading driver from %s...\n", driver.URL)

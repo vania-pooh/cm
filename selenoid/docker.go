@@ -20,6 +20,7 @@ import (
 	"github.com/heroku/docker-registry-client/registry"
 	"time"
 	. "vbom.ml/util/sortorder"
+	"strings"
 )
 
 const (
@@ -39,6 +40,7 @@ type DockerConfigurator struct {
 	OutputDirAware
 	VersionAware
 	DownloadAware
+	RequestedBrowsersAware
 	LastVersions int
 	Pull         bool
 	RegistryUrl  string
@@ -53,6 +55,7 @@ func NewDockerConfigurator(config *LifecycleConfig) (*DockerConfigurator, error)
 		OutputDirAware: OutputDirAware{OutputDir: config.OutputDir},
 		VersionAware:   VersionAware{Version: config.Version},
 		DownloadAware:  DownloadAware{DownloadNeeded: config.Download},
+		RequestedBrowsersAware:   RequestedBrowsersAware{Browsers: config.Browsers},
 		RegistryUrl:    config.RegistryUrl,
 		LastVersions:   config.LastVersions,
 		Pull:           config.Pull,
@@ -158,8 +161,21 @@ func (c *DockerConfigurator) Configure() error {
 func (c *DockerConfigurator) createConfig() SelenoidConfig {
 	supportedBrowsers := c.getSupportedBrowsers()
 	browsers := make(map[string]config.Versions)
-	//TODO: consider Browsers arg and filter out browser names
-	for browserName, image := range supportedBrowsers {
+	browsersToIterate := supportedBrowsers
+	if c.Browsers != "" {
+		requestedBrowsers := strings.Split(c.Browsers, comma)
+		if len(requestedBrowsers) > 0 {
+			browsersToIterate = make(map[string]string)
+			for _, rb := range requestedBrowsers {
+				if image, ok := supportedBrowsers[rb]; ok {
+					browsersToIterate[rb] = image
+					continue
+				}
+				c.Printf("unsupported browser: %s\n", rb)
+			}
+		}
+	}
+	for browserName, image := range browsersToIterate {
 		c.Printf("Processing browser \"%s\"...\n", browserName)
 		tags := c.fetchImageTags(image)
 		pulledTags := tags

@@ -62,3 +62,7 @@ type VersionAware struct {
 type DownloadAware struct {
 	DownloadNeeded bool
 }
+
+type RequestedBrowsersAware struct {
+	Browsers string
+}

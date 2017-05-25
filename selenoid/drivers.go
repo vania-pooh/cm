@@ -59,6 +59,7 @@ type DriversConfigurator struct {
 	OutputDirAware
 	VersionAware
 	DownloadAware
+	RequestedBrowsersAware
 	Browsers        string
 	BrowsersJsonUrl string
 
@@ -73,7 +74,7 @@ func NewDriversConfigurator(config *LifecycleConfig) *DriversConfigurator {
 		OutputDirAware:  OutputDirAware{OutputDir: config.OutputDir},
 		VersionAware:    VersionAware{Version: config.Version},
 		DownloadAware:   DownloadAware{DownloadNeeded: config.Download},
-		Browsers:        config.Browsers,
+		RequestedBrowsersAware:   RequestedBrowsersAware{Browsers: config.Browsers},
 		BrowsersJsonUrl: config.BrowsersJsonUrl,
 	}
 }

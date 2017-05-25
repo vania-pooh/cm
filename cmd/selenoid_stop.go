@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/aerokube/cm/selenoid"
 	"github.com/spf13/cobra"
 	"os"
@@ -20,7 +19,7 @@ var selenoidStopCmd = &cobra.Command{
 		}
 		lifecycle, err := selenoid.NewLifecycle(&config)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to initialize: %v\n", err)
+			stderr("Failed to initialize: %v\n", err)
 			os.Exit(1)
 		}
 		err = lifecycle.Stop()

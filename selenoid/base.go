@@ -9,17 +9,6 @@ type Configurator interface {
 	Configure() *SelenoidConfig
 }
 
-/*
-	TODO: implement these interfaces + add commands:
-		- download
-		- configure
-		- start (does download and configure with force = false)
-		- stop
-		- update (start with force = true)
-		- cleanup (removes ~/.aerokube/selenoid + stops)
-
-*/
-
 type Closer interface {
 	Close()
 }

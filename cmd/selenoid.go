@@ -32,6 +32,8 @@ func init() {
 	selenoidCmd.AddCommand(selenoidConfigureCmd)
 	selenoidCmd.AddCommand(selenoidStartCmd)
 	selenoidCmd.AddCommand(selenoidStopCmd)
+	selenoidCmd.AddCommand(selenoidUpdateCmd)
+	selenoidCmd.AddCommand(selenoidCleanupCmd)
 }
 
 var selenoidCmd = &cobra.Command{
@@ -53,4 +55,8 @@ func getConfigDir(elem ...string) string {
 
 func getSelenoidConfigDir() string {
 	return getConfigDir(".aerokube", "selenoid")
+}
+
+func stderr(format string, a ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, a)
 }

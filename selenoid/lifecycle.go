@@ -2,6 +2,7 @@ package selenoid
 
 import (
 	"context"
+	"fmt"
 	"github.com/docker/docker/client"
 	"io"
 )
@@ -99,7 +100,15 @@ func (l *Lifecycle) Start() error {
 		},
 		func() error {
 			if l.runnable.IsRunning() {
-				l.Printf("Selenoid is already running")
+				if l.Force {
+					l.Printf("stopping previous Selenoid process\n")
+					err := l.Stop()
+					if err != nil {
+						return fmt.Errorf("failed to stop previous Selenoid process: %v\n", err)
+					}
+				} else {
+					l.Printf("Selenoid is already running\n")
+				}
 				return nil
 			}
 			l.Printf("starting Selenoid\n")
@@ -115,7 +124,7 @@ func (l *Lifecycle) Stop() error {
 		},
 		func() error {
 			if !l.runnable.IsRunning() {
-				l.Printf("Selenoid is not running")
+				l.Printf("Selenoid is not running\n")
 				return nil
 			}
 			l.Printf("stopping Selenoid\n")

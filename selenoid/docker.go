@@ -9,24 +9,36 @@ import (
 	"log"
 	"sort"
 
+	"errors"
 	"github.com/aerokube/selenoid/config"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/heroku/docker-registry-client/registry"
+	"time"
 	. "vbom.ml/util/sortorder"
 )
 
 const (
-	Latest   = "latest"
-	firefox  = "firefox"
-	opera    = "opera"
-	tag_1216 = "12.16"
+	Latest                = "latest"
+	firefox               = "firefox"
+	opera                 = "opera"
+	tag_1216              = "12.16"
+	selenoidImage         = "aerokube/selenoid"
+	selenoidContainerName = "selenoid"
+	selenoidContainerPort = 4444
 )
 
 type SelenoidConfig map[string]config.Versions
 
 type DockerConfigurator struct {
 	Logger
+	OutputDirAware
+	VersionAware
+	DownloadAware
 	LastVersions int
 	Pull         bool
 	RegistryUrl  string
@@ -35,10 +47,16 @@ type DockerConfigurator struct {
 	reg          *registry.Registry
 }
 
-func NewDockerConfigurator(registryUrl string, quiet bool) (*DockerConfigurator, error) {
+func NewDockerConfigurator(config *LifecycleConfig) (*DockerConfigurator, error) {
 	c := &DockerConfigurator{
-		Logger:      Logger{Quiet: quiet},
-		RegistryUrl: registryUrl,
+		Logger:         Logger{Quiet: config.Quiet},
+		OutputDirAware: OutputDirAware{OutputDir: config.OutputDir},
+		VersionAware:   VersionAware{Version: config.Version},
+		DownloadAware:  DownloadAware{DownloadNeeded: config.Download},
+		RegistryUrl:    config.RegistryUrl,
+		LastVersions:   config.LastVersions,
+		Pull:           config.Pull,
+		Tmpfs:          config.Tmpfs,
 	}
 	if c.Quiet {
 		log.SetFlags(0)
@@ -46,11 +64,11 @@ func NewDockerConfigurator(registryUrl string, quiet bool) (*DockerConfigurator,
 	}
 	err := c.initDockerClient()
 	if err != nil {
-		return nil, fmt.Errorf("New configurator: %v", err)
+		return nil, fmt.Errorf("new configurator: %v", err)
 	}
 	err = c.initRegistryClient()
 	if err != nil {
-		return nil, fmt.Errorf("New configurator: %v", err)
+		return nil, fmt.Errorf("new configurator: %v", err)
 	}
 	return c, nil
 }
@@ -58,7 +76,7 @@ func NewDockerConfigurator(registryUrl string, quiet bool) (*DockerConfigurator,
 func (c *DockerConfigurator) initDockerClient() error {
 	docker, err := client.NewEnvClient()
 	if err != nil {
-		return fmt.Errorf("Failed to init Docker client: %v", err)
+		return fmt.Errorf("failed to init Docker client: %v", err)
 	}
 	c.docker = docker
 	return nil
@@ -73,25 +91,79 @@ func (c *DockerConfigurator) initRegistryClient() error {
 	return nil
 }
 
-func (c *DockerConfigurator) Close() {
+func (c *DockerConfigurator) Close() error {
 	if c.docker != nil {
-		c.docker.Close()
+		return c.docker.Close()
 	}
+	return nil
 }
 
-func (c *DockerConfigurator) Configure() *SelenoidConfig {
+func (c *DockerConfigurator) IsDownloaded() bool {
+	return c.getSelenoidImage() != nil
+}
+
+func (c *DockerConfigurator) getSelenoidImage() *types.ImageSummary {
+	f := filters.NewArgs()
+	f.Add("name", selenoidImage)
+	images, err := c.docker.ImageList(context.Background(), types.ImageListOptions{Filters: f})
+	if err != nil {
+		c.Printf("failed to list images: %v\n", err)
+		return nil
+	}
+	if len(images) > 0 {
+		return &images[0]
+	}
+	return nil
+}
+
+func (c *DockerConfigurator) Download() error {
+	version := c.Version
+	if version == "" {
+		latestVersion := c.getLatestSelenoidVersion()
+		if latestVersion != nil {
+			version = *latestVersion
+		}
+	}
+	ref := selenoidImage
+	if version != "" {
+		ref = fmt.Sprintf("%s:%s", ref, version)
+	}
+	if !c.pullImage(context.Background(), ref) {
+		return errors.New("failed to pull Selenoid image")
+	}
+	return nil
+}
+
+func (c *DockerConfigurator) getLatestSelenoidVersion() *string {
+	tags := c.fetchImageTags(selenoidImage)
+	if len(tags) > 0 {
+		return &tags[0]
+	}
+	return nil
+}
+
+func (c *DockerConfigurator) IsConfigured() bool {
+	return fileExists(getSelenoidConfigPath(c.OutputDir))
+}
+
+func (c *DockerConfigurator) Configure() error {
 	cfg := c.createConfig()
-	return &cfg
+	data, err := json.MarshalIndent(cfg, "", "    ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal json: %v\n", err)
+	}
+	return ioutil.WriteFile(getSelenoidConfigPath(c.OutputDir), data, 0644)
 }
 
 func (c *DockerConfigurator) createConfig() SelenoidConfig {
 	supportedBrowsers := c.getSupportedBrowsers()
 	browsers := make(map[string]config.Versions)
+	//TODO: consider Browsers arg and filter out browser names
 	for browserName, image := range supportedBrowsers {
 		c.Printf("Processing browser \"%s\"...\n", browserName)
 		tags := c.fetchImageTags(image)
 		pulledTags := tags
-		if c.Pull {
+		if c.DownloadNeeded {
 			pulledTags = c.pullImages(image, tags)
 		} else if c.LastVersions > 0 && c.LastVersions <= len(tags) {
 			pulledTags = tags[:c.LastVersions]
@@ -217,4 +289,76 @@ func (c *DockerConfigurator) pullImage(ctx context.Context, ref string) bool {
 		c.Printf("Failed to pull image \"%s\": %v", ref, err)
 	}
 	return true
+}
+
+func (c *DockerConfigurator) IsRunning() bool {
+	return c.getSelenoidContainer() != nil
+}
+
+func (c *DockerConfigurator) getSelenoidContainer() *types.Container {
+	f := filters.NewArgs()
+	f.Add("name", selenoidContainerName)
+	containers, err := c.docker.ContainerList(context.Background(), types.ContainerListOptions{Filters: f})
+	if err != nil {
+		return nil
+	}
+	for _, c := range containers {
+		for _, p := range c.Ports {
+			if p.PublicPort == selenoidContainerPort {
+				return &c
+			}
+		}
+	}
+	return nil
+}
+
+func (c *DockerConfigurator) Start() error {
+	image := c.getSelenoidImage()
+	if image == nil {
+		return errors.New("Selenoid image is not downloaded: this is probably a bug")
+	}
+	env := []string{
+		fmt.Sprintf("TZ=%s", time.Local),
+	}
+	port, err := nat.NewPort("tcp", string(selenoidContainerPort))
+	if err != nil {
+		return fmt.Errorf("failed to init Selenoid port: %v", err)
+	}
+	exposedPorts := map[nat.Port]struct{}{port: {}}
+	portBindings := nat.PortMap{}
+	portBindings[port] = []nat.PortBinding{{HostIP: "0.0.0.0"}}
+	ctx := context.Background()
+	ctr, err := c.docker.ContainerCreate(ctx,
+		&container.Config{
+			Hostname:     "localhost",
+			Image:        image.RepoTags[0],
+			Env:          env,
+			ExposedPorts: exposedPorts,
+		},
+		&container.HostConfig{
+			AutoRemove:   true,
+			PortBindings: portBindings,
+		},
+		&network.NetworkingConfig{}, "")
+	if err != nil {
+		return fmt.Errorf("failed to create container: %v", err)
+	}
+	err = c.docker.ContainerStart(ctx, ctr.ID, types.ContainerStartOptions{})
+	if err != nil {
+		c.removeContainer(ctr.ID)
+		return fmt.Errorf("failed to start container: %v", err)
+	}
+	return nil
+}
+
+func (c *DockerConfigurator) removeContainer(id string) error {
+	return c.docker.ContainerRemove(context.Background(), id, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+}
+
+func (c *DockerConfigurator) Stop() error {
+	sc := c.getSelenoidContainer()
+	if sc != nil {
+		return c.docker.ContainerRemove(context.Background(), sc.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+	}
+	return nil
 }

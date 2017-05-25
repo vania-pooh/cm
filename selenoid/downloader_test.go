@@ -8,13 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"runtime"
 	"testing"
 )
-
-//TODO: add docs for drivers, download and sync commands
 
 const (
 	previousReleaseTag = "1.2.0"
@@ -24,7 +20,7 @@ const (
 
 var (
 	mockDownloaderServer *httptest.Server
-	releaseFileName      = fmt.Sprintf("selenoid_%s_%s", runtime.GOOS, runtime.GOARCH)
+	releaseFileName      = getReleaseFileName()
 )
 
 func init() {
@@ -91,16 +87,15 @@ func testDownloadRelease(t *testing.T, desiredVersion string, expectedFileConten
 			desiredVersion,
 			false,
 		)
-		err := downloader.Download()
+		outputPath, err := downloader.Download()
 		AssertThat(t, err, Is{nil})
+		AssertThat(t, outputPath, Is{Not{nil}})
 
-		releaseOutputPath := filepath.Join(dir, "selenoid")
-		_, err = os.Stat(releaseOutputPath)
-		if os.IsNotExist(err) {
-			t.Fatalf("release was not downloaded to %s: file does not exist\n", releaseOutputPath)
+		if !fileExists(outputPath) {
+			t.Fatalf("release was not downloaded to %s: file does not exist\n", outputPath)
 		}
 
-		data, err := ioutil.ReadFile(releaseOutputPath)
+		data, err := ioutil.ReadFile(outputPath)
 		AssertThat(t, err, Is{nil})
 		AssertThat(t, string(data), EqualTo{expectedFileContents})
 	})
@@ -123,7 +118,7 @@ func TestUnknownRelease(t *testing.T) {
 func downloadShouldFail(t *testing.T, fn func(string) *Downloader) {
 	withTmpDir(t, "something", func(t *testing.T, dir string) {
 		downloader := fn(dir)
-		err := downloader.Download()
+		_, err := downloader.Download()
 		AssertThat(t, err, Is{Not{nil}})
 	})
 }

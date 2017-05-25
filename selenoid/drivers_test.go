@@ -108,7 +108,13 @@ func TestConfigureDrivers(t *testing.T) {
 
 	withTmpDir(t, "test-download", func(t *testing.T, dir string) {
 		browsersJsonUrl := mockServerUrl(mockDriverServer, "/browsers.json")
-		configurator := NewDriversConfigurator(dir, "first,second,third", browsersJsonUrl, true, false)
+		lcConfig := LifecycleConfig{
+			OutputDir:       dir,
+			Browsers:        "first,second,third",
+			BrowsersJsonUrl: browsersJsonUrl,
+			Quiet:           false,
+		}
+		configurator := NewDriversConfigurator(&lcConfig)
 		cfg := *configurator.Configure()
 		AssertThat(t, len(cfg), EqualTo{2})
 
@@ -120,6 +126,7 @@ func TestConfigureDrivers(t *testing.T) {
 				Versions: map[string]*config.Browser{
 					Latest: {
 						Image: []string{unpackedFirstFile},
+						Path:  "/",
 					},
 				},
 			},
@@ -128,6 +135,7 @@ func TestConfigureDrivers(t *testing.T) {
 				Versions: map[string]*config.Browser{
 					Latest: {
 						Image: []string{unpackedSecondFile},
+						Path:  "/",
 					},
 				},
 			},
@@ -140,8 +148,7 @@ func TestConfigureDrivers(t *testing.T) {
 		}
 
 		for _, unpackedFile := range []string{unpackedFirstFile, unpackedSecondFile} {
-			_, err := os.Stat(unpackedFile)
-			if os.IsNotExist(err) {
+			if !fileExists(unpackedFile) {
 				t.Fatalf("file %s does not exist\n", unpackedFile)
 			}
 		}
@@ -175,8 +182,7 @@ func testUnpack(t *testing.T, data []byte, fileName string, fn func([]byte, stri
 			t.Fatal(err)
 		}
 
-		_, err = os.Stat(unpackedFile)
-		if os.IsNotExist(err) {
+		if !fileExists(unpackedFile) {
 			t.Fatalf("file %s does not exist\n", unpackedFile)
 		}
 

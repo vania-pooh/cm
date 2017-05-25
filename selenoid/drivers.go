@@ -6,16 +6,23 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aerokube/selenoid/config"
+	"github.com/google/go-github/github"
+	"github.com/mitchellh/go-ps"
 	"gopkg.in/cheggaaa/pb.v1"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -50,34 +57,130 @@ type downloadedDriver struct {
 type DriversConfigurator struct {
 	Logger
 	OutputDirAware
+	VersionAware
+	DownloadAware
 	Browsers        string
 	BrowsersJsonUrl string
-	Download        bool
+
+	GithubBaseUrl string
+	OS            string
+	Arch          string
 }
 
-func NewDriversConfigurator(outputDir string, browsers string, browsersJsonUrl string, download bool, quiet bool) *DriversConfigurator {
+func NewDriversConfigurator(config *LifecycleConfig) *DriversConfigurator {
 	return &DriversConfigurator{
-		Logger:          Logger{Quiet: quiet},
-		OutputDirAware:  OutputDirAware{OutputDir: outputDir},
-		Browsers:        browsers,
-		BrowsersJsonUrl: browsersJsonUrl,
-		Download:        download,
+		Logger:          Logger{Quiet: config.Quiet},
+		OutputDirAware:  OutputDirAware{OutputDir: config.OutputDir},
+		VersionAware:    VersionAware{Version: config.Version},
+		DownloadAware:   DownloadAware{DownloadNeeded: config.Download},
+		Browsers:        config.Browsers,
+		BrowsersJsonUrl: config.BrowsersJsonUrl,
 	}
 }
 
-func (c *DriversConfigurator) Configure() *SelenoidConfig {
-	browsers := c.loadAvailableBrowsers()
-	if browsers == nil {
-		return nil
-	}
-	err := c.createOutputDir()
+func (d *DriversConfigurator) IsDownloaded() bool {
+	return fileExists(d.getSelenoidBinaryPath())
+}
+
+func (d *DriversConfigurator) getSelenoidBinaryPath() string {
+	return filepath.Join(d.OutputDir, getReleaseFileName())
+}
+
+func getSelenoidConfigPath(outputDir string) string {
+	return filepath.Join(outputDir, "browsers.json")
+}
+
+func (d *DriversConfigurator) Download() error {
+	u, err := d.getUrl()
 	if err != nil {
-		c.Printf("failed to create output directory: %v\n", err)
-		return nil
+		return fmt.Errorf("failed to get download URL for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
 	}
-	downloadedDrivers := c.downloadDrivers(browsers, c.OutputDir)
+	err = d.createOutputDir()
+	if err != nil {
+		d.Printf("failed to create output directory: %v\n", err)
+		return err
+	}
+	outputFile, err := d.downloadFile(u)
+	if err != nil {
+		return fmt.Errorf("failed to download Selenoid for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
+	}
+	d.Printf("successfully downloaded Selenoid to %s\n", outputFile)
+	return nil
+}
+
+func (d *DriversConfigurator) getUrl() (string, error) {
+	d.Printf("getting Selenoid release information for version: %s\n", d.Version)
+	ctx := context.Background()
+	client := github.NewClient(nil)
+	if d.GithubBaseUrl != "" {
+		u, err := url.Parse(d.GithubBaseUrl)
+		if err != nil {
+			return "", fmt.Errorf("invalid Github base url [%s]: %v\n", d.GithubBaseUrl, err)
+		}
+		client.BaseURL = u
+	}
+	var release *github.RepositoryRelease
+	var err error
+	if d.Version != Latest {
+		release, _, err = client.Repositories.GetReleaseByTag(ctx, owner, repo, d.Version)
+	} else {
+		release, _, err = client.Repositories.GetLatestRelease(ctx, owner, repo)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	if release == nil {
+		return "", fmt.Errorf("unknown release: %s\n", d.Version)
+	}
+
+	for _, asset := range release.Assets {
+		assetName := *(asset.Name)
+		if strings.Contains(assetName, d.OS) && strings.Contains(assetName, d.Arch) {
+			return *(asset.BrowserDownloadURL), nil
+		}
+	}
+	return "", fmt.Errorf("Selenoid binary for %s %s is not available for specified release: %s\n", strings.Title(d.OS), d.Arch, d.Version)
+}
+
+func (d *DriversConfigurator) downloadFile(url string) (string, error) {
+	d.Printf("downloading Selenoid release from %s\n", url)
+	outputPath := d.getSelenoidBinaryPath()
+	f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	err = downloadFileWithProgressBar(url, f)
+	if err != nil {
+		return "", err
+	}
+	d.Printf("Selenoid binary saved to %s\n", outputPath)
+	return outputPath, nil
+}
+
+func (d *DriversConfigurator) IsConfigured() bool {
+	return fileExists(getSelenoidConfigPath(d.OutputDir))
+}
+
+func (d *DriversConfigurator) Configure() error {
+	browsers, err := d.loadAvailableBrowsers()
+	if err != nil {
+		return fmt.Errorf("failed to load available browsers: %v\n", err)
+	}
+	err = d.createOutputDir()
+	if err != nil {
+		return fmt.Errorf("failed to create output directory: %v\n", err)
+	}
+	downloadedDrivers := d.downloadDrivers(browsers, d.OutputDir)
 	cfg := generateConfig(downloadedDrivers)
-	return &cfg
+	data, err := json.MarshalIndent(cfg, "", "    ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal json: %v\n", err)
+	}
+	return ioutil.WriteFile(getSelenoidConfigPath(d.OutputDir), data, 0644)
 }
 
 func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {
@@ -89,7 +192,7 @@ func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {
 			Versions: map[string]*config.Browser{
 				Latest: {
 					Image: cmd,
-					Path: "/",
+					Path:  "/",
 				},
 			},
 		}
@@ -98,21 +201,21 @@ func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {
 	return browsers
 }
 
-func (c *DriversConfigurator) loadAvailableBrowsers() *Browsers {
-	jsonUrl := c.BrowsersJsonUrl
-	c.Printf("downloading browser data from: %s\n", jsonUrl)
+func (d *DriversConfigurator) loadAvailableBrowsers() (*Browsers, error) {
+	jsonUrl := d.BrowsersJsonUrl
+	d.Printf("downloading browser data from: %s\n", jsonUrl)
 	data, err := downloadFile(jsonUrl)
 	if err != nil {
-		c.Printf("browsers data download error: %v\n", err)
-		return nil
+		d.Printf("browsers data download error: %v\n", err)
+		return nil, err
 	}
 	var browsers Browsers
 	err = json.Unmarshal(data, &browsers)
 	if err != nil {
-		c.Printf("browsers data read error: %v\n", err)
-		return nil
+		d.Printf("browsers data read error: %v\n", err)
+		return nil, err
 	}
-	return &browsers
+	return &browsers, nil
 }
 
 func downloadFile(url string) ([]byte, error) {
@@ -149,17 +252,17 @@ func downloadFileWithProgressBar(url string, w io.Writer) error {
 	return nil
 }
 
-func (c *DriversConfigurator) downloadDriver(driver *Driver, dir string) (string, error) {
-	if c.Download {
-		c.Printf("Downloading driver from %s...\n", driver.URL)
+func (d *DriversConfigurator) downloadDriver(driver *Driver, dir string) (string, error) {
+	if d.DownloadNeeded {
+		d.Printf("Downloading driver from %s...\n", driver.URL)
 		data, err := downloadFile(driver.URL)
 		if err != nil {
 			return "", fmt.Errorf("failed to download driver archive: %v\n", err)
 		}
-		c.Printf("Unpacking archive to %s...\n", dir)
+		d.Printf("Unpacking archive to %s...\n", dir)
 		return extractFile(data, driver.Filename, dir)
 	}
-	return driver.Filename, nil
+	return filepath.Join(dir, driver.Filename), nil
 }
 
 func getMagicHeader(data []byte) string {
@@ -280,11 +383,11 @@ func outputFile(outputPath string, mode os.FileMode, r io.Reader) error {
 	return nil
 }
 
-func (c *DriversConfigurator) downloadDrivers(browsers *Browsers, configDir string) []downloadedDriver {
+func (d *DriversConfigurator) downloadDrivers(browsers *Browsers, configDir string) []downloadedDriver {
 	ret := []downloadedDriver{}
 	browsersToIterate := *browsers
-	if c.Browsers != "" {
-		requestedBrowsers := strings.Split(c.Browsers, comma)
+	if d.Browsers != "" {
+		requestedBrowsers := strings.Split(d.Browsers, comma)
 		if len(requestedBrowsers) > 0 {
 			browsersToIterate = make(Browsers)
 			for _, rb := range requestedBrowsers {
@@ -292,7 +395,7 @@ func (c *DriversConfigurator) downloadDrivers(browsers *Browsers, configDir stri
 					browsersToIterate[rb] = browser
 					continue
 				}
-				c.Printf("unsupported browser: %s\n", rb)
+				d.Printf("unsupported browser: %s\n", rb)
 			}
 		}
 	}
@@ -303,10 +406,10 @@ loop:
 		goarch := runtime.GOARCH
 		if architectures, ok := browser.Files[goos]; ok {
 			if driver, ok := architectures[goarch]; ok {
-				c.Printf("Processing %s...\n", strings.Title(browserName))
-				driverPath, err := c.downloadDriver(&driver, configDir)
+				d.Printf("Processing %s...\n", strings.Title(browserName))
+				driverPath, err := d.downloadDriver(&driver, configDir)
 				if err != nil {
-					c.Printf("Failed to download %s driver: %v\n", strings.Title(browserName), err)
+					d.Printf("Failed to download %s driver: %v\n", strings.Title(browserName), err)
 					continue loop
 				}
 				command := fmt.Sprintf(browser.Command, driverPath)
@@ -318,4 +421,77 @@ loop:
 		}
 	}
 	return ret
+}
+
+func (d *DriversConfigurator) IsRunning() bool {
+	selenoidProcesses := findSelenoidProcesses()
+	if len(selenoidProcesses) > 0 {
+		d.Printf("Selenoid is running as process %d\n", selenoidProcesses[0].Pid)
+		return true
+	}
+
+	d.Printf("Selenoid is not running\n")
+	return false
+}
+
+func (d *DriversConfigurator) Start() error {
+	return runCommand(d.getSelenoidBinaryPath(), []string{
+		"-conf", getSelenoidConfigPath(d.OutputDir),
+		"-no-docker",
+	})
+}
+
+func (d *DriversConfigurator) Stop() error {
+	for _, p := range findSelenoidProcesses() {
+		err := p.Kill()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *DriversConfigurator) Close() error {
+	//Does nothing
+	return nil
+}
+
+func findSelenoidProcesses() []os.Process {
+	return findProcesses("selenoid")
+}
+
+func findProcesses(regex string) []os.Process {
+	ret := []os.Process{}
+	processes, _ := ps.Processes()
+	for _, process := range processes {
+		matched, _ := regexp.MatchString(regex, process.Executable())
+		if matched {
+			p, err := os.FindProcess(process.Pid())
+			if err == nil {
+				ret = append(ret, *p)
+			}
+		}
+	}
+	return ret
+}
+
+func runCommand(command string, args []string) error {
+	cmd := exec.Command(command, args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Start()
+}
+
+func getReleaseFileName() string {
+	rel := fmt.Sprintf("selenoid_%s_%s", runtime.GOOS, runtime.GOARCH)
+	if runtime.GOOS == "windows" {
+		return rel + ".exe"
+	}
+	return rel
+}
+
+func fileExists(p string) bool {
+	_, err := os.Stat(p)
+	return !os.IsNotExist(err)
 }

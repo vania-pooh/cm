@@ -35,22 +35,22 @@ func NewDownloader(githubBaseUrl string, outputDir string, os string, arch strin
 	}
 }
 
-func (d *Downloader) Download() error {
+func (d *Downloader) Download() (string, error) {
 	u, err := d.getUrl()
 	if err != nil {
-		return fmt.Errorf("failed to get download URL for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
+		return "", fmt.Errorf("failed to get download URL for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
 	}
 	err = d.createOutputDir()
 	if err != nil {
 		d.Printf("failed to create output directory: %v\n", err)
-		return nil
+		return "", err
 	}
 	outputFile, err := d.downloadFile(u)
 	if err != nil {
-		return fmt.Errorf("failed to download Selenoid for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
+		return "", fmt.Errorf("failed to download Selenoid for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
 	}
 	d.Printf("successfully downloaded Selenoid to %s\n", outputFile)
-	return nil
+	return outputFile, nil
 }
 
 func (d *Downloader) getUrl() (string, error) {

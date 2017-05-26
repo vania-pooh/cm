@@ -105,57 +105,61 @@ func TestLimitNoPull(t *testing.T) {
 }
 
 func testConfigure(t *testing.T, pull bool) {
-	lcConfig := LifecycleConfig{
-		RegistryUrl: mockDockerServer.URL,
-		Quiet:       false,
-	}
-	c, err := NewDockerConfigurator(&lcConfig)
-	AssertThat(t, err, Is{nil})
-	c.LastVersions = 2
-	c.Pull = pull
-	c.Tmpfs = 512
-	defer c.Close()
-	cfgPointer, err := (*c).Configure()
-	AssertThat(t, err, Is{nil})
-	AssertThat(t, cfgPointer, Is{Not{nil}})
-
-	cfg := *cfgPointer
-	AssertThat(t, len(cfg), EqualTo{2})
-
-	firefoxVersions, hasFirefoxKey := cfg["firefox"]
-	AssertThat(t, hasFirefoxKey, Is{true})
-	AssertThat(t, firefoxVersions, Is{Not{nil}})
-
-	tmpfsMap := make(map[string]string)
-	tmpfsMap["/tmp"] = "size=512m"
-
-	correctFFBrowsers := make(map[string]*config.Browser)
-	correctFFBrowsers["46.0"] = &config.Browser{
-		Image: "selenoid/firefox:46.0",
-		Port:  "4444",
-		Path:  "/wd/hub",
-		Tmpfs: tmpfsMap,
-	}
-	correctFFBrowsers["45.0"] = &config.Browser{
-		Image: "selenoid/firefox:45.0",
-		Port:  "4444",
-		Path:  "/wd/hub",
-		Tmpfs: tmpfsMap,
-	}
-	AssertThat(t, firefoxVersions, EqualTo{config.Versions{
-		Default:  "46.0",
-		Versions: correctFFBrowsers,
-	}})
-
-	operaVersions, hasPhantomjsKey := cfg["opera"]
-	AssertThat(t, hasPhantomjsKey, Is{true})
-	AssertThat(t, operaVersions, Is{Not{nil}})
-	AssertThat(t, operaVersions.Default, EqualTo{"44.0"})
-
-	correctPhantomjsBrowsers := make(map[string]*config.Browser)
-	correctPhantomjsBrowsers["2.1.1"] = &config.Browser{
-		Image: "selenoid/opera:44.0",
-		Port:  "4444",
-		Tmpfs: tmpfsMap,
-	}
+	withTmpDir(t, "test-docker-configure", func(t *testing.T, dir string) {
+		
+		lcConfig := LifecycleConfig{
+			OutputDir: dir,
+			RegistryUrl: mockDockerServer.URL,
+			Quiet:       false,
+		}
+		c, err := NewDockerConfigurator(&lcConfig)
+		AssertThat(t, err, Is{nil})
+		c.LastVersions = 2
+		c.Pull = pull
+		c.Tmpfs = 512
+		defer c.Close()
+		cfgPointer, err := (*c).Configure()
+		AssertThat(t, err, Is{nil})
+		AssertThat(t, cfgPointer, Is{Not{nil}})
+	
+		cfg := *cfgPointer
+		AssertThat(t, len(cfg), EqualTo{2})
+	
+		firefoxVersions, hasFirefoxKey := cfg["firefox"]
+		AssertThat(t, hasFirefoxKey, Is{true})
+		AssertThat(t, firefoxVersions, Is{Not{nil}})
+	
+		tmpfsMap := make(map[string]string)
+		tmpfsMap["/tmp"] = "size=512m"
+	
+		correctFFBrowsers := make(map[string]*config.Browser)
+		correctFFBrowsers["46.0"] = &config.Browser{
+			Image: "selenoid/firefox:46.0",
+			Port:  "4444",
+			Path:  "/wd/hub",
+			Tmpfs: tmpfsMap,
+		}
+		correctFFBrowsers["45.0"] = &config.Browser{
+			Image: "selenoid/firefox:45.0",
+			Port:  "4444",
+			Path:  "/wd/hub",
+			Tmpfs: tmpfsMap,
+		}
+		AssertThat(t, firefoxVersions, EqualTo{config.Versions{
+			Default:  "46.0",
+			Versions: correctFFBrowsers,
+		}})
+	
+		operaVersions, hasPhantomjsKey := cfg["opera"]
+		AssertThat(t, hasPhantomjsKey, Is{true})
+		AssertThat(t, operaVersions, Is{Not{nil}})
+		AssertThat(t, operaVersions.Default, EqualTo{"44.0"})
+	
+		correctPhantomjsBrowsers := make(map[string]*config.Browser)
+		correctPhantomjsBrowsers["2.1.1"] = &config.Browser{
+			Image: "selenoid/opera:44.0",
+			Port:  "4444",
+			Tmpfs: tmpfsMap,
+		}
+	})
 }

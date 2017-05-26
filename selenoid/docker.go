@@ -119,7 +119,7 @@ func (c *DockerConfigurator) getSelenoidImage() *types.ImageSummary {
 	return nil
 }
 
-func (c *DockerConfigurator) Download() error {
+func (c *DockerConfigurator) Download() (string, error) {
 	version := c.Version
 	if version == "" {
 		latestVersion := c.getLatestSelenoidVersion()
@@ -132,9 +132,9 @@ func (c *DockerConfigurator) Download() error {
 		ref = fmt.Sprintf("%s:%s", ref, version)
 	}
 	if !c.pullImage(context.Background(), ref) {
-		return errors.New("failed to pull Selenoid image")
+		return "", errors.New("failed to pull Selenoid image")
 	}
-	return nil
+	return ref, nil
 }
 
 func (c *DockerConfigurator) getLatestSelenoidVersion() *string {
@@ -149,13 +149,13 @@ func (c *DockerConfigurator) IsConfigured() bool {
 	return fileExists(getSelenoidConfigPath(c.OutputDir))
 }
 
-func (c *DockerConfigurator) Configure() error {
+func (c *DockerConfigurator) Configure() (*SelenoidConfig, error) {
 	cfg := c.createConfig()
 	data, err := json.MarshalIndent(cfg, "", "    ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal json: %v\n", err)
+		return nil, fmt.Errorf("failed to marshal json: %v\n", err)
 	}
-	return ioutil.WriteFile(getSelenoidConfigPath(c.OutputDir), data, 0644)
+	return &cfg, ioutil.WriteFile(getSelenoidConfigPath(c.OutputDir), data, 0644)
 }
 
 func (c *DockerConfigurator) createConfig() SelenoidConfig {

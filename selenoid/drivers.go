@@ -31,6 +31,8 @@ const (
 	zipMagicHeader  = "504b"
 	gzipMagicHeader = "1f8b"
 	comma           = ","
+	owner = "aerokube"
+	repo  = "selenoid"
 )
 
 type Browsers map[string]Browser
@@ -76,6 +78,7 @@ func NewDriversConfigurator(config *LifecycleConfig) *DriversConfigurator {
 		DownloadAware:   DownloadAware{DownloadNeeded: config.Download},
 		RequestedBrowsersAware:   RequestedBrowsersAware{Browsers: config.Browsers},
 		BrowsersJsonUrl: config.BrowsersJsonUrl,
+		GithubBaseUrl: config.GithubBaseUrl,
 	}
 }
 
@@ -91,22 +94,21 @@ func getSelenoidConfigPath(outputDir string) string {
 	return filepath.Join(outputDir, "browsers.json")
 }
 
-func (d *DriversConfigurator) Download() error {
+func (d *DriversConfigurator) Download() (string, error) {
 	u, err := d.getUrl()
 	if err != nil {
-		return fmt.Errorf("failed to get download URL for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
+		return "", fmt.Errorf("failed to get download URL for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
 	}
 	err = d.createOutputDir()
 	if err != nil {
-		d.Printf("failed to create output directory: %v\n", err)
-		return err
+		return "", fmt.Errorf("failed to create output directory: %v\n", err)
 	}
 	outputFile, err := d.downloadFile(u)
 	if err != nil {
-		return fmt.Errorf("failed to download Selenoid for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
+		return "", fmt.Errorf("failed to download Selenoid for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
 	}
 	d.Printf("successfully downloaded Selenoid to %s\n", outputFile)
-	return nil
+	return outputFile, nil
 }
 
 func (d *DriversConfigurator) getUrl() (string, error) {
@@ -166,22 +168,22 @@ func (d *DriversConfigurator) IsConfigured() bool {
 	return fileExists(getSelenoidConfigPath(d.OutputDir))
 }
 
-func (d *DriversConfigurator) Configure() error {
+func (d *DriversConfigurator) Configure() (*SelenoidConfig, error) {
 	browsers, err := d.loadAvailableBrowsers()
 	if err != nil {
-		return fmt.Errorf("failed to load available browsers: %v\n", err)
+		return nil, fmt.Errorf("failed to load available browsers: %v\n", err)
 	}
 	err = d.createOutputDir()
 	if err != nil {
-		return fmt.Errorf("failed to create output directory: %v\n", err)
+		return nil, fmt.Errorf("failed to create output directory: %v\n", err)
 	}
 	downloadedDrivers := d.downloadDrivers(browsers, d.OutputDir)
 	cfg := generateConfig(downloadedDrivers)
 	data, err := json.MarshalIndent(cfg, "", "    ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal json: %v\n", err)
+		return &cfg, fmt.Errorf("failed to marshal json: %v\n", err)
 	}
-	return ioutil.WriteFile(getSelenoidConfigPath(d.OutputDir), data, 0644)
+	return &cfg, ioutil.WriteFile(getSelenoidConfigPath(d.OutputDir), data, 0644)
 }
 
 func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {

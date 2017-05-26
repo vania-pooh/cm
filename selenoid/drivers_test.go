@@ -14,10 +14,18 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
+	"github.com/google/go-github/github"
+)
+
+const (
+	previousReleaseTag = "1.2.0"
+	latestReleaseTag   = "1.2.1"
+	version            = "version"
 )
 
 var (
 	mockDriverServer *httptest.Server
+	releaseFileName  = getReleaseFileName()
 )
 
 func init() {
@@ -57,6 +65,22 @@ func driversMux() http.Handler {
 			}
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(&browsers)
+		},
+	))
+
+	mux.HandleFunc(
+		fmt.Sprintf("/repos/%s/%s/releases/tags/%s", owner, repo, previousReleaseTag),
+		http.HandlerFunc(getReleaseHandler(previousReleaseTag)),
+	)
+	mux.HandleFunc(
+		fmt.Sprintf("/repos/%s/%s/releases/latest", owner, repo),
+		http.HandlerFunc(getReleaseHandler(latestReleaseTag)),
+	)
+	mux.HandleFunc("/"+releaseFileName, http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			version := r.URL.Query().Get(version)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(version))
 		},
 	))
 
@@ -115,7 +139,11 @@ func TestConfigureDrivers(t *testing.T) {
 			Quiet:           false,
 		}
 		configurator := NewDriversConfigurator(&lcConfig)
-		cfg := *configurator.Configure()
+		cfgPointer, err := (*configurator).Configure()
+		AssertThat(t, err, Is{nil})
+		AssertThat(t, cfgPointer, Is{Not{nil}})
+
+		cfg := *cfgPointer
 		AssertThat(t, len(cfg), EqualTo{2})
 
 		unpackedFirstFile := path.Join(dir, "zip-testfile")
@@ -225,4 +253,104 @@ func withTmpDir(t *testing.T, prefix string, fn func(*testing.T, string)) {
 	defer os.RemoveAll(dir)
 	fn(t, dir)
 
+}
+
+func getReleaseHandler(v string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		releaseUrl := mockServerUrl(
+			mockDriverServer,
+			fmt.Sprintf("/%s?%s=%s", releaseFileName, version, v),
+		)
+		release := github.RepositoryRelease{
+			Assets: []github.ReleaseAsset{
+				{
+					Name:               &releaseFileName,
+					BrowserDownloadURL: &releaseUrl,
+				},
+			},
+		}
+		data, _ := json.Marshal(&release)
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+	}
+}
+
+func TestDownloadLatestRelease(t *testing.T) {
+	testDownloadRelease(t, Latest, latestReleaseTag)
+}
+
+func TestDownloadSpecificRelease(t *testing.T) {
+	testDownloadRelease(t, previousReleaseTag, previousReleaseTag)
+}
+
+func testDownloadRelease(t *testing.T, desiredVersion string, expectedFileContents string) {
+	withTmpDir(t, "downloader", func(t *testing.T, dir string) {
+		lcConfig := LifecycleConfig{
+			GithubBaseUrl: mockDriverServer.URL,
+			OutputDir: dir,
+			OS: runtime.GOOS,
+			Arch: runtime.GOARCH,
+			Version: desiredVersion,
+		}
+		configurator := NewDriversConfigurator(&lcConfig)
+		outputPath, err := configurator.Download()
+		AssertThat(t, err, Is{nil})
+		AssertThat(t, outputPath, Is{Not{nil}})
+
+		if !fileExists(outputPath) {
+			t.Fatalf("release was not downloaded to %s: file does not exist\n", outputPath)
+		}
+
+		data, err := ioutil.ReadFile(outputPath)
+		AssertThat(t, err, Is{nil})
+		AssertThat(t, string(data), EqualTo{expectedFileContents})
+	})
+
+}
+
+func TestUnknownRelease(t *testing.T) {
+	downloadShouldFail(t, func(dir string) *DriversConfigurator {
+		lcConfig := LifecycleConfig{
+			GithubBaseUrl: mockDriverServer.URL,
+			OutputDir: dir,
+			OS: runtime.GOOS,
+			Arch: runtime.GOARCH,
+			Version: "missing-version",
+		}
+		return NewDriversConfigurator(&lcConfig)
+	})
+}
+
+func downloadShouldFail(t *testing.T, fn func(string) *DriversConfigurator) {
+	withTmpDir(t, "something", func(t *testing.T, dir string) {
+		configurator := fn(dir)
+		_, err := configurator.Download()
+		AssertThat(t, err, Is{Not{nil}})
+	})
+}
+
+func TestUnavailableBinary(t *testing.T) {
+	downloadShouldFail(t, func(dir string) *DriversConfigurator {
+		lcConfig := LifecycleConfig{
+			GithubBaseUrl: mockDriverServer.URL,
+			OutputDir: dir,
+			OS: "missing-os",
+			Arch: "missing-arch",
+			Version: previousReleaseTag,
+		}
+		return NewDriversConfigurator(&lcConfig)
+	})
+}
+
+func TestWrongBaseUrl(t *testing.T) {
+	downloadShouldFail(t, func(dir string) *DriversConfigurator {
+		lcConfig := LifecycleConfig{
+			GithubBaseUrl: ":::bad-url:::",
+			OutputDir: dir,
+			OS: runtime.GOOS,
+			Arch: runtime.GOARCH,
+			Version: Latest,
+		}
+		return NewDriversConfigurator(&lcConfig)
+	})
 }

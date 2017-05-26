@@ -15,12 +15,12 @@ type Closer interface {
 
 type Downloadable interface {
 	IsDownloaded() bool
-	Download() error
+	Download() (string, error)
 }
 
 type Configurable interface {
 	IsConfigured() bool
-	Configure() error
+	Configure() (*SelenoidConfig, error)
 }
 
 type Runnable interface {

@@ -73,7 +73,8 @@ func (l *Lifecycle) Download() error {
 		return nil
 	} else {
 		l.Printf("downloading Selenoid")
-		return l.downloadable.Download()
+		_, err := l.downloadable.Download()
+		return err
 	}
 }
 
@@ -88,7 +89,8 @@ func (l *Lifecycle) Configure() error {
 				return nil
 			}
 			l.Printf("starting Selenoid configuration\n")
-			return l.configurable.Configure()
+			_, err := l.configurable.Configure()
+			return err
 		},
 	})
 }

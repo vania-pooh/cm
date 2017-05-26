@@ -68,7 +68,11 @@ func TestImageWithTag(t *testing.T) {
 }
 
 func TestFetchImageTags(t *testing.T) {
-	c, err := NewDockerConfigurator(mockDockerServer.URL, false)
+	lcConfig := LifecycleConfig{
+		RegistryUrl: mockDriverServer.URL,
+		Quiet: false,
+	}
+	c, err := NewDockerConfigurator(&lcConfig)
 	AssertThat(t, err, Is{nil})
 	defer c.Close()
 	tags := c.fetchImageTags("selenoid/firefox")
@@ -79,7 +83,11 @@ func TestFetchImageTags(t *testing.T) {
 }
 
 func TestPullImages(t *testing.T) {
-	c, err := NewDockerConfigurator(mockDockerServer.URL, false)
+	lcConfig := LifecycleConfig{
+		RegistryUrl: mockDriverServer.URL,
+		Quiet: false,
+	}
+	c, err := NewDockerConfigurator(&lcConfig)
 	AssertThat(t, err, Is{nil})
 	defer c.Close()
 	tags := c.pullImages("selenoid/firefox", []string{"46.0", "45.0"})
@@ -97,13 +105,21 @@ func TestLimitNoPull(t *testing.T) {
 }
 
 func testConfigure(t *testing.T, pull bool) {
-	c, err := NewDockerConfigurator(mockDockerServer.URL, false)
+	lcConfig := LifecycleConfig{
+		RegistryUrl: mockDriverServer.URL,
+		Quiet: false,
+	}
+	c, err := NewDockerConfigurator(&lcConfig)
 	AssertThat(t, err, Is{nil})
 	c.LastVersions = 2
 	c.Pull = pull
 	c.Tmpfs = 512
 	defer c.Close()
-	cfg := *c.Configure()
+	cfgPointer, err := (*c).Configure()
+	AssertThat(t, err, Is{nil})
+	AssertThat(t, cfgPointer, Is{Not{nil}})
+	
+	cfg := *cfgPointer
 	AssertThat(t, len(cfg), EqualTo{2})
 
 	firefoxVersions, hasFirefoxKey := cfg["firefox"]

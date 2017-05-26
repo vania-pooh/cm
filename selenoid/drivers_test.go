@@ -5,6 +5,7 @@ import (
 	"fmt"
 	. "github.com/aandryashin/matchers"
 	"github.com/aerokube/selenoid/config"
+	"github.com/google/go-github/github"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +15,6 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
-	"github.com/google/go-github/github"
 )
 
 const (
@@ -136,6 +136,7 @@ func TestConfigureDrivers(t *testing.T) {
 			OutputDir:       dir,
 			Browsers:        "first,second,third",
 			BrowsersJsonUrl: browsersJsonUrl,
+			Download:        true,
 			Quiet:           false,
 		}
 		configurator := NewDriversConfigurator(&lcConfig)
@@ -287,10 +288,10 @@ func testDownloadRelease(t *testing.T, desiredVersion string, expectedFileConten
 	withTmpDir(t, "downloader", func(t *testing.T, dir string) {
 		lcConfig := LifecycleConfig{
 			GithubBaseUrl: mockDriverServer.URL,
-			OutputDir: dir,
-			OS: runtime.GOOS,
-			Arch: runtime.GOARCH,
-			Version: desiredVersion,
+			OutputDir:     dir,
+			OS:            runtime.GOOS,
+			Arch:          runtime.GOARCH,
+			Version:       desiredVersion,
 		}
 		configurator := NewDriversConfigurator(&lcConfig)
 		outputPath, err := configurator.Download()
@@ -312,10 +313,10 @@ func TestUnknownRelease(t *testing.T) {
 	downloadShouldFail(t, func(dir string) *DriversConfigurator {
 		lcConfig := LifecycleConfig{
 			GithubBaseUrl: mockDriverServer.URL,
-			OutputDir: dir,
-			OS: runtime.GOOS,
-			Arch: runtime.GOARCH,
-			Version: "missing-version",
+			OutputDir:     dir,
+			OS:            runtime.GOOS,
+			Arch:          runtime.GOARCH,
+			Version:       "missing-version",
 		}
 		return NewDriversConfigurator(&lcConfig)
 	})
@@ -333,10 +334,10 @@ func TestUnavailableBinary(t *testing.T) {
 	downloadShouldFail(t, func(dir string) *DriversConfigurator {
 		lcConfig := LifecycleConfig{
 			GithubBaseUrl: mockDriverServer.URL,
-			OutputDir: dir,
-			OS: "missing-os",
-			Arch: "missing-arch",
-			Version: previousReleaseTag,
+			OutputDir:     dir,
+			OS:            "missing-os",
+			Arch:          "missing-arch",
+			Version:       previousReleaseTag,
 		}
 		return NewDriversConfigurator(&lcConfig)
 	})
@@ -346,10 +347,10 @@ func TestWrongBaseUrl(t *testing.T) {
 	downloadShouldFail(t, func(dir string) *DriversConfigurator {
 		lcConfig := LifecycleConfig{
 			GithubBaseUrl: ":::bad-url:::",
-			OutputDir: dir,
-			OS: runtime.GOOS,
-			Arch: runtime.GOARCH,
-			Version: Latest,
+			OutputDir:     dir,
+			OS:            runtime.GOOS,
+			Arch:          runtime.GOARCH,
+			Version:       Latest,
 		}
 		return NewDriversConfigurator(&lcConfig)
 	})

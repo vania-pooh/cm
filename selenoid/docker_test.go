@@ -69,8 +69,8 @@ func TestImageWithTag(t *testing.T) {
 
 func TestFetchImageTags(t *testing.T) {
 	lcConfig := LifecycleConfig{
-		RegistryUrl: mockDriverServer.URL,
-		Quiet: false,
+		RegistryUrl: mockDockerServer.URL,
+		Quiet:       false,
 	}
 	c, err := NewDockerConfigurator(&lcConfig)
 	AssertThat(t, err, Is{nil})
@@ -84,8 +84,8 @@ func TestFetchImageTags(t *testing.T) {
 
 func TestPullImages(t *testing.T) {
 	lcConfig := LifecycleConfig{
-		RegistryUrl: mockDriverServer.URL,
-		Quiet: false,
+		RegistryUrl: mockDockerServer.URL,
+		Quiet:       false,
 	}
 	c, err := NewDockerConfigurator(&lcConfig)
 	AssertThat(t, err, Is{nil})
@@ -106,8 +106,8 @@ func TestLimitNoPull(t *testing.T) {
 
 func testConfigure(t *testing.T, pull bool) {
 	lcConfig := LifecycleConfig{
-		RegistryUrl: mockDriverServer.URL,
-		Quiet: false,
+		RegistryUrl: mockDockerServer.URL,
+		Quiet:       false,
 	}
 	c, err := NewDockerConfigurator(&lcConfig)
 	AssertThat(t, err, Is{nil})
@@ -118,7 +118,7 @@ func testConfigure(t *testing.T, pull bool) {
 	cfgPointer, err := (*c).Configure()
 	AssertThat(t, err, Is{nil})
 	AssertThat(t, cfgPointer, Is{Not{nil}})
-	
+
 	cfg := *cfgPointer
 	AssertThat(t, len(cfg), EqualTo{2})
 

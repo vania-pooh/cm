@@ -18,9 +18,9 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/heroku/docker-registry-client/registry"
+	"strings"
 	"time"
 	. "vbom.ml/util/sortorder"
-	"strings"
 )
 
 const (
@@ -51,15 +51,15 @@ type DockerConfigurator struct {
 
 func NewDockerConfigurator(config *LifecycleConfig) (*DockerConfigurator, error) {
 	c := &DockerConfigurator{
-		Logger:         Logger{Quiet: config.Quiet},
-		OutputDirAware: OutputDirAware{OutputDir: config.OutputDir},
-		VersionAware:   VersionAware{Version: config.Version},
-		DownloadAware:  DownloadAware{DownloadNeeded: config.Download},
-		RequestedBrowsersAware:   RequestedBrowsersAware{Browsers: config.Browsers},
-		RegistryUrl:    config.RegistryUrl,
-		LastVersions:   config.LastVersions,
-		Pull:           config.Pull,
-		Tmpfs:          config.Tmpfs,
+		Logger:                 Logger{Quiet: config.Quiet},
+		OutputDirAware:         OutputDirAware{OutputDir: config.OutputDir},
+		VersionAware:           VersionAware{Version: config.Version},
+		DownloadAware:          DownloadAware{DownloadNeeded: config.Download},
+		RequestedBrowsersAware: RequestedBrowsersAware{Browsers: config.Browsers},
+		RegistryUrl:            config.RegistryUrl,
+		LastVersions:           config.LastVersions,
+		Pull:                   config.Pull,
+		Tmpfs:                  config.Tmpfs,
 	}
 	if c.Quiet {
 		log.SetFlags(0)

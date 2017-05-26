@@ -31,8 +31,8 @@ const (
 	zipMagicHeader  = "504b"
 	gzipMagicHeader = "1f8b"
 	comma           = ","
-	owner = "aerokube"
-	repo  = "selenoid"
+	owner           = "aerokube"
+	repo            = "selenoid"
 )
 
 type Browsers map[string]Browser
@@ -72,13 +72,15 @@ type DriversConfigurator struct {
 
 func NewDriversConfigurator(config *LifecycleConfig) *DriversConfigurator {
 	return &DriversConfigurator{
-		Logger:          Logger{Quiet: config.Quiet},
-		OutputDirAware:  OutputDirAware{OutputDir: config.OutputDir},
-		VersionAware:    VersionAware{Version: config.Version},
-		DownloadAware:   DownloadAware{DownloadNeeded: config.Download},
-		RequestedBrowsersAware:   RequestedBrowsersAware{Browsers: config.Browsers},
-		BrowsersJsonUrl: config.BrowsersJsonUrl,
-		GithubBaseUrl: config.GithubBaseUrl,
+		Logger:                 Logger{Quiet: config.Quiet},
+		OutputDirAware:         OutputDirAware{OutputDir: config.OutputDir},
+		VersionAware:           VersionAware{Version: config.Version},
+		DownloadAware:          DownloadAware{DownloadNeeded: config.Download},
+		RequestedBrowsersAware: RequestedBrowsersAware{Browsers: config.Browsers},
+		BrowsersJsonUrl:        config.BrowsersJsonUrl,
+		GithubBaseUrl:          config.GithubBaseUrl,
+		OS:                     config.OS,
+		Arch:                   config.Arch,
 	}
 }
 

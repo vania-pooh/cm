@@ -53,7 +53,7 @@ func getConfigDir(elem ...string) string {
 	return filepath.Join(elem...)
 }
 
-func getSelenoidConfigDir() string {
+func getSelenoidOutputDir() string {
 	return getConfigDir(".aerokube", "selenoid")
 }
 

@@ -8,7 +8,7 @@ import (
 
 func init() {
 	selenoidCleanupCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "suppress output")
-	selenoidCleanupCmd.Flags().StringVarP(&outputDir, "output-dir", "c", getSelenoidConfigDir(), "directory to remove")
+	selenoidCleanupCmd.Flags().StringVarP(&outputDir, "output-dir", "o", getSelenoidOutputDir(), "directory to remove")
 }
 
 var selenoidCleanupCmd = &cobra.Command{

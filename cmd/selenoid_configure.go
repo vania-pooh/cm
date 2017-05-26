@@ -9,7 +9,7 @@ import (
 
 func init() {
 	selenoidConfigureCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "suppress output")
-	selenoidConfigureCmd.Flags().StringVarP(&outputDir, "output-dir", "c", getSelenoidConfigDir(), "directory to save files")
+	selenoidConfigureCmd.Flags().StringVarP(&outputDir, "output-dir", "o", getSelenoidOutputDir(), "directory to save files")
 	selenoidConfigureCmd.Flags().StringVarP(&operatingSystem, "operating-system", "o", runtime.GOOS, "target operating system (drivers only)")
 	selenoidConfigureCmd.Flags().StringVarP(&arch, "architecture", "a", runtime.GOARCH, "target architecture (drivers only)")
 	selenoidConfigureCmd.Flags().StringVarP(&version, "version", "v", selenoid.Latest, "desired version; empty string for latest version")

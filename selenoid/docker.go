@@ -340,11 +340,12 @@ func (c *DockerConfigurator) Start() error {
 	env := []string{
 		fmt.Sprintf("TZ=%s", time.Local),
 	}
-	port, err := nat.NewPort("tcp", strconv.Itoa(selenoidContainerPort))
+	portString := strconv.Itoa(selenoidContainerPort)
+	port, err := nat.NewPort("tcp", portString)
 	if err != nil {
 		return fmt.Errorf("failed to init Selenoid port: %v", err)
 	}
-	exposedPorts := map[nat.Port]struct{}{port: {}}
+	exposedPorts := map[nat.Port]struct{}{port: portString}
 	portBindings := nat.PortMap{}
 	portBindings[port] = []nat.PortBinding{{HostIP: "0.0.0.0"}}
 	volumes := []string{fmt.Sprintf("%s:/etc/selenoid:ro", c.ConfigDir)}

@@ -120,7 +120,11 @@ func (l *Lifecycle) Start() error {
 				return nil
 			}
 			l.Printf("Starting Selenoid...\n")
-			return l.runnable.Start()
+			err := l.runnable.Start()
+			if err == nil {
+				l.Printf("Successfully started Selenoid\n")
+			}
+			return err
 		},
 	})
 }

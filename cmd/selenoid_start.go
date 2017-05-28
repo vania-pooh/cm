@@ -22,7 +22,7 @@ func startImpl(force bool) {
 	}
 	err = lifecycle.Start()
 	if err != nil {
-		lifecycle.Printf("failed to start Selenoid: %v\n", err)
+		lifecycle.Printf("Failed to start Selenoid: %v\n", err)
 		os.Exit(1)
 	}
 	os.Exit(0)

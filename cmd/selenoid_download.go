@@ -16,7 +16,7 @@ var selenoidDownloadCmd = &cobra.Command{
 		}
 		err = lifecycle.Download()
 		if err != nil {
-			lifecycle.Printf("failed to download Selenoid release: %v\n", err)
+			lifecycle.Printf("Failed to download Selenoid release: %v\n", err)
 			os.Exit(1)
 		}
 		os.Exit(0)

@@ -16,7 +16,7 @@ var selenoidStopCmd = &cobra.Command{
 		}
 		err = lifecycle.Stop()
 		if err != nil {
-			lifecycle.Printf("failed to stop Selenoid: %v\n", err)
+			lifecycle.Printf("Failed to stop Selenoid: %v\n", err)
 			os.Exit(1)
 		}
 		os.Exit(0)

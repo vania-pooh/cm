@@ -109,12 +109,12 @@ func (d *DriversConfigurator) Download() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to download Selenoid for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
 	}
-	d.Printf("successfully downloaded Selenoid to %s\n", outputFile)
+	d.Printf("Successfully downloaded Selenoid to %s\n", outputFile)
 	return outputFile, nil
 }
 
 func (d *DriversConfigurator) getUrl() (string, error) {
-	d.Printf("getting Selenoid release information for version: %s\n", d.Version)
+	d.Printf("Getting Selenoid release information for version: %s\n", d.Version)
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	if d.GithubBaseUrl != "" {
@@ -150,7 +150,7 @@ func (d *DriversConfigurator) getUrl() (string, error) {
 }
 
 func (d *DriversConfigurator) downloadFile(url string) (string, error) {
-	d.Printf("downloading Selenoid release from %s\n", url)
+	d.Printf("Downloading Selenoid release from %s\n", url)
 	outputPath := d.getSelenoidBinaryPath()
 	f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
@@ -208,16 +208,16 @@ func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {
 
 func (d *DriversConfigurator) loadAvailableBrowsers() (*Browsers, error) {
 	jsonUrl := d.BrowsersJsonUrl
-	d.Printf("downloading browser data from: %s\n", jsonUrl)
+	d.Printf("Downloading browser data from: %s\n", jsonUrl)
 	data, err := downloadFile(jsonUrl)
 	if err != nil {
-		d.Printf("browsers data download error: %v\n", err)
+		d.Printf("Browsers data download error: %v\n", err)
 		return nil, err
 	}
 	var browsers Browsers
 	err = json.Unmarshal(data, &browsers)
 	if err != nil {
-		d.Printf("browsers data read error: %v\n", err)
+		d.Printf("Browsers data read error: %v\n", err)
 		return nil, err
 	}
 	return &browsers, nil
@@ -400,7 +400,7 @@ func (d *DriversConfigurator) downloadDrivers(browsers *Browsers, configDir stri
 					browsersToIterate[rb] = browser
 					continue
 				}
-				d.Printf("unsupported browser: %s\n", rb)
+				d.Printf("Unsupported browser: %s\n", rb)
 			}
 		}
 	}

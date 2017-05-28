@@ -108,7 +108,7 @@ func (c *DockerConfigurator) IsDownloaded() bool {
 func (c *DockerConfigurator) getSelenoidImage() *types.ImageSummary {
 	images, err := c.docker.ImageList(context.Background(), types.ImageListOptions{})
 	if err != nil {
-		c.Printf("failed to list images: %v\n", err)
+		c.Printf("Failed to list images: %v\n", err)
 		return nil
 	}
 	for _, img := range images {
@@ -171,7 +171,7 @@ func (c *DockerConfigurator) createConfig() SelenoidConfig {
 					browsersToIterate[rb] = image
 					continue
 				}
-				c.Printf("unsupported browser: %s\n", rb)
+				c.Printf("Unsupported browser: %s\n", rb)
 			}
 		}
 	}

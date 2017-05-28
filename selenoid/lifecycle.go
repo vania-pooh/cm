@@ -43,7 +43,7 @@ func NewLifecycle(config *LifecycleConfig) (*Lifecycle, error) {
 		Forceable: Forceable{Force: config.Force},
 	}
 	if isDockerAvailable() {
-		lc.Printf("using Docker\n")
+		lc.Printf("Using Docker\n")
 		dockerCfg, err := NewDockerConfigurator(config)
 		if err != nil {
 			return nil, err
@@ -74,7 +74,7 @@ func (l *Lifecycle) Download() error {
 		l.Printf("Selenoid is already downloaded")
 		return nil
 	} else {
-		l.Printf("downloading Selenoid")
+		l.Printf("Downloading Selenoid...")
 		_, err := l.downloadable.Download()
 		return err
 	}
@@ -90,7 +90,7 @@ func (l *Lifecycle) Configure() error {
 				l.Printf("Selenoid is already configured")
 				return nil
 			}
-			l.Printf("starting Selenoid configuration\n")
+			l.Printf("Configuring Selenoid...\n")
 			_, err := l.configurable.Configure()
 			return err
 		},
@@ -105,7 +105,7 @@ func (l *Lifecycle) Start() error {
 		func() error {
 			if l.runnable.IsRunning() {
 				if l.Force {
-					l.Printf("stopping previous Selenoid process\n")
+					l.Printf("Stopping previous Selenoid process...\n")
 					err := l.Stop()
 					if err != nil {
 						return fmt.Errorf("failed to stop previous Selenoid process: %v\n", err)
@@ -115,7 +115,7 @@ func (l *Lifecycle) Start() error {
 				}
 				return nil
 			}
-			l.Printf("starting Selenoid\n")
+			l.Printf("Starting Selenoid...\n")
 			return l.runnable.Start()
 		},
 	})
@@ -131,7 +131,7 @@ func (l *Lifecycle) Stop() error {
 				l.Printf("Selenoid is not running\n")
 				return nil
 			}
-			l.Printf("stopping Selenoid\n")
+			l.Printf("Stopping Selenoid...\n")
 			return l.runnable.Stop()
 		},
 	})

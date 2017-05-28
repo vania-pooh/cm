@@ -12,7 +12,7 @@ func init() {
 	selenoidConfigureCmd.Flags().StringVarP(&outputDir, "config-dir", "c", getSelenoidOutputDir(), "directory to save files")
 	selenoidConfigureCmd.Flags().StringVarP(&operatingSystem, "operating-system", "o", runtime.GOOS, "target operating system (drivers only)")
 	selenoidConfigureCmd.Flags().StringVarP(&arch, "architecture", "a", runtime.GOARCH, "target architecture (drivers only)")
-	selenoidConfigureCmd.Flags().StringVarP(&version, "version", "v", selenoid.Latest, "desired version; empty string for latest version")
+	selenoidConfigureCmd.Flags().StringVarP(&version, "version", "v", "", "desired version; empty string for latest release")
 	selenoidConfigureCmd.Flags().StringVarP(&browsers, "browsers", "b", "", "comma separated list of browser names to process")
 	selenoidConfigureCmd.Flags().StringVarP(&browsersJSONUrl, "browsers-json", "j", defaultBrowsersJsonURL, "browsers JSON data URL (in most cases never need to be set manually)")
 	selenoidConfigureCmd.Flags().BoolVarP(&skipDownload, "no-download", "n", false, "only output config file without downloading images or drivers")

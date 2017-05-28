@@ -1,25 +1,15 @@
 package cmd
 
 import (
-	"github.com/aerokube/cm/selenoid"
 	"github.com/spf13/cobra"
 	"os"
 )
-
-func init() {
-	selenoidCleanupCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "suppress output")
-	selenoidCleanupCmd.Flags().StringVarP(&outputDir, "config-dir", "c", getSelenoidOutputDir(), "directory to remove")
-}
 
 var selenoidCleanupCmd = &cobra.Command{
 	Use:   "cleanup",
 	Short: "Remove Selenoid traces",
 	Run: func(cmd *cobra.Command, args []string) {
-		config := selenoid.LifecycleConfig{
-			Quiet:     quiet,
-			OutputDir: outputDir,
-		}
-		lifecycle, err := selenoid.NewLifecycle(&config)
+		lifecycle, err := createLifecycle()
 		if err != nil {
 			stderr("Failed to initialize: %v\n", err)
 			os.Exit(1)
@@ -31,7 +21,7 @@ var selenoidCleanupCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		err = os.RemoveAll(outputDir)
+		err = os.RemoveAll(configDir)
 		if err != nil {
 			stderr("Failed to remove configuration directory: %v\n", err)
 			os.Exit(1)

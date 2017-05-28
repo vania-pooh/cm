@@ -1,16 +1,9 @@
 package cmd
 
 import (
-	"github.com/aerokube/cm/selenoid"
 	"github.com/spf13/cobra"
 	"os"
 )
-
-func init() {
-	selenoidStartCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "suppress output")
-	selenoidStartCmd.Flags().StringVarP(&outputDir, "config-dir", "c", getSelenoidOutputDir(), "directory to save files")
-	selenoidStartCmd.Flags().BoolVarP(&force, "force", "f", false, "force action")
-}
 
 var selenoidStartCmd = &cobra.Command{
 	Use:   "start",
@@ -21,12 +14,8 @@ var selenoidStartCmd = &cobra.Command{
 }
 
 func startImpl(force bool) {
-	config := selenoid.LifecycleConfig{
-		Quiet:     quiet,
-		OutputDir: outputDir,
-		Force:     force,
-	}
-	lifecycle, err := selenoid.NewLifecycle(&config)
+	lifecycle, err := createLifecycle()
+	lifecycle.Force = force
 	if err != nil {
 		stderr("Failed to initialize: %v\n", err)
 		os.Exit(1)

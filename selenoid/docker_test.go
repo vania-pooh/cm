@@ -104,18 +104,18 @@ func TestLimitNoPull(t *testing.T) {
 	testConfigure(t, false)
 }
 
-func testConfigure(t *testing.T, pull bool) {
+func testConfigure(t *testing.T, download bool) {
 	withTmpDir(t, "test-docker-configure", func(t *testing.T, dir string) {
 		
 		lcConfig := LifecycleConfig{
 			OutputDir: dir,
 			RegistryUrl: mockDockerServer.URL,
+			Download: download,
 			Quiet:       false,
 		}
 		c, err := NewDockerConfigurator(&lcConfig)
 		AssertThat(t, err, Is{nil})
 		c.LastVersions = 2
-		c.Pull = pull
 		c.Tmpfs = 512
 		defer c.Close()
 		cfgPointer, err := (*c).Configure()

@@ -4,11 +4,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	selenoidUpdateCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "suppress output")
-	selenoidUpdateCmd.Flags().StringVarP(&outputDir, "config-dir", "c", getSelenoidOutputDir(), "directory to save files")
-}
-
 var selenoidUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update Selenoid (download latest Selenoid, configure and start)",

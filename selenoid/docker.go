@@ -58,7 +58,6 @@ func NewDockerConfigurator(config *LifecycleConfig) (*DockerConfigurator, error)
 		RequestedBrowsersAware: RequestedBrowsersAware{Browsers: config.Browsers},
 		RegistryUrl:            config.RegistryUrl,
 		LastVersions:           config.LastVersions,
-		Pull:                   config.Pull,
 		Tmpfs:                  config.Tmpfs,
 	}
 	if c.Quiet {

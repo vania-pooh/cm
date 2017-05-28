@@ -1,23 +1,15 @@
 package cmd
 
 import (
-	"github.com/aerokube/cm/selenoid"
 	"github.com/spf13/cobra"
 	"os"
 )
-
-func init() {
-	selenoidStopCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "suppress output")
-}
 
 var selenoidStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop Selenoid",
 	Run: func(cmd *cobra.Command, args []string) {
-		config := selenoid.LifecycleConfig{
-			Quiet: quiet,
-		}
-		lifecycle, err := selenoid.NewLifecycle(&config)
+		lifecycle, err := createLifecycle()
 		if err != nil {
 			stderr("Failed to initialize: %v\n", err)
 			os.Exit(1)

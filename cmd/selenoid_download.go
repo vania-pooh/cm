@@ -12,6 +12,7 @@ func init() {
 	selenoidDownloadCmd.Flags().StringVarP(&outputDir, "config-dir", "c", getSelenoidOutputDir(), "directory to save files")
 	selenoidDownloadCmd.Flags().StringVarP(&operatingSystem, "operating-system", "o", runtime.GOOS, "target operating system (drivers only)")
 	selenoidDownloadCmd.Flags().StringVarP(&arch, "architecture", "a", runtime.GOARCH, "target architecture (drivers only)")
+	selenoidDownloadCmd.Flags().StringVarP(&registry, "registry", "r", registryUrl, "Docker registry to use")
 	selenoidDownloadCmd.Flags().StringVarP(&version, "version", "v", selenoid.Latest, "desired version; empty string for latest version")
 	selenoidDownloadCmd.Flags().BoolVarP(&force, "force", "f", false, "force action")
 }

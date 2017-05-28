@@ -154,6 +154,10 @@ func (c *DockerConfigurator) Configure() (*SelenoidConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal json: %v\n", err)
 	}
+	err = c.createOutputDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %v\n", err)
+	}
 	return &cfg, ioutil.WriteFile(getSelenoidConfigPath(c.OutputDir), data, 0644)
 }
 

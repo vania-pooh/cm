@@ -356,7 +356,6 @@ func (c *DockerConfigurator) Start() error {
 			ExposedPorts: exposedPorts,
 		},
 		&container.HostConfig{
-			AutoRemove:   true,
 			PortBindings: portBindings,
 		},
 		&network.NetworkingConfig{}, "")

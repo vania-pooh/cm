@@ -30,6 +30,7 @@ var selenoidConfigureCmd = &cobra.Command{
 		config := selenoid.LifecycleConfig{
 			Quiet:     quiet,
 			OutputDir: outputDir,
+			RegistryUrl: registry,
 			Force:     force,
 			Download:  !skipDownload,
 			OS:        operatingSystem,

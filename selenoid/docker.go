@@ -347,6 +347,7 @@ func (c *DockerConfigurator) Start() error {
 	exposedPorts := map[nat.Port]struct{}{port: {}}
 	portBindings := nat.PortMap{}
 	portBindings[port] = []nat.PortBinding{{HostIP: "0.0.0.0"}}
+	volumes := []string{fmt.Sprintf("%s:/etc/selenoid:ro", c.ConfigDir)}
 	ctx := context.Background()
 	ctr, err := c.docker.ContainerCreate(ctx,
 		&container.Config{
@@ -356,9 +357,10 @@ func (c *DockerConfigurator) Start() error {
 			ExposedPorts: exposedPorts,
 		},
 		&container.HostConfig{
+			Binds: volumes,
 			PortBindings: portBindings,
 		},
-		&network.NetworkingConfig{}, "")
+		&network.NetworkingConfig{}, selenoidContainerName)
 	if err != nil {
 		return fmt.Errorf("failed to create container: %v", err)
 	}

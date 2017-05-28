@@ -106,15 +106,15 @@ func (c *DockerConfigurator) IsDownloaded() bool {
 }
 
 func (c *DockerConfigurator) getSelenoidImage() *types.ImageSummary {
-	f := filters.NewArgs()
-	f.Add("name", selenoidImage)
-	images, err := c.docker.ImageList(context.Background(), types.ImageListOptions{Filters: f})
+	images, err := c.docker.ImageList(context.Background(), types.ImageListOptions{})
 	if err != nil {
 		c.Printf("failed to list images: %v\n", err)
 		return nil
 	}
-	if len(images) > 0 {
-		return &images[0]
+	for _, img := range images {
+		if len(img.RepoTags) > 0 && strings.Contains(img.RepoTags[0], selenoidImage) {
+			return &img
+		}
 	}
 	return nil
 }

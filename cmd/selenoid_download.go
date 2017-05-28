@@ -22,11 +22,12 @@ var selenoidDownloadCmd = &cobra.Command{
 	Short: "Download Selenoid latest or specified release",
 	Run: func(cmd *cobra.Command, args []string) {
 		config := selenoid.LifecycleConfig{
-			Quiet:     quiet,
-			OutputDir: outputDir,
-			OS:        operatingSystem,
-			Arch:      arch,
-			Version:   version,
+			Quiet:       quiet,
+			OutputDir:   outputDir,
+			RegistryUrl: registry,
+			OS:          operatingSystem,
+			Arch:        arch,
+			Version:     version,
 		}
 		lifecycle, err := selenoid.NewLifecycle(&config)
 		if err != nil {

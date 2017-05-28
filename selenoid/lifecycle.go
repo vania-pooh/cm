@@ -10,7 +10,7 @@ import (
 type LifecycleConfig struct {
 	Quiet     bool
 	Force     bool
-	OutputDir string
+	ConfigDir string
 	Browsers  string
 	Download  bool
 
@@ -30,6 +30,7 @@ type LifecycleConfig struct {
 type Lifecycle struct {
 	Logger
 	Forceable
+	Config       *LifecycleConfig
 	downloadable Downloadable
 	configurable Configurable
 	runnable     Runnable
@@ -40,6 +41,7 @@ func NewLifecycle(config *LifecycleConfig) (*Lifecycle, error) {
 	lc := Lifecycle{
 		Logger:    Logger{Quiet: config.Quiet},
 		Forceable: Forceable{Force: config.Force},
+		Config:    config,
 	}
 	if isDockerAvailable() {
 		lc.Printf("Using Docker...\n")

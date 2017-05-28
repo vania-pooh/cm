@@ -58,7 +58,7 @@ type downloadedDriver struct {
 
 type DriversConfigurator struct {
 	Logger
-	OutputDirAware
+	ConfigDirAware
 	VersionAware
 	DownloadAware
 	RequestedBrowsersAware
@@ -73,7 +73,7 @@ type DriversConfigurator struct {
 func NewDriversConfigurator(config *LifecycleConfig) *DriversConfigurator {
 	return &DriversConfigurator{
 		Logger:                 Logger{Quiet: config.Quiet},
-		OutputDirAware:         OutputDirAware{OutputDir: config.OutputDir},
+		ConfigDirAware:         ConfigDirAware{ConfigDir: config.ConfigDir},
 		VersionAware:           VersionAware{Version: config.Version},
 		DownloadAware:          DownloadAware{DownloadNeeded: config.Download},
 		RequestedBrowsersAware: RequestedBrowsersAware{Browsers: config.Browsers},
@@ -89,7 +89,7 @@ func (d *DriversConfigurator) IsDownloaded() bool {
 }
 
 func (d *DriversConfigurator) getSelenoidBinaryPath() string {
-	return filepath.Join(d.OutputDir, getReleaseFileName())
+	return filepath.Join(d.ConfigDir, getReleaseFileName())
 }
 
 func getSelenoidConfigPath(outputDir string) string {
@@ -101,9 +101,9 @@ func (d *DriversConfigurator) Download() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get download URL for arch = %s and version = %s: %v\n", d.Arch, d.Version, err)
 	}
-	err = d.createOutputDir()
+	err = d.createConfigDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to create output directory: %v\n", err)
+		return "", fmt.Errorf("failed to create config directory: %v\n", err)
 	}
 	outputFile, err := d.downloadFile(u)
 	if err != nil {
@@ -167,7 +167,7 @@ func (d *DriversConfigurator) downloadFile(url string) (string, error) {
 }
 
 func (d *DriversConfigurator) IsConfigured() bool {
-	return fileExists(getSelenoidConfigPath(d.OutputDir))
+	return fileExists(getSelenoidConfigPath(d.ConfigDir))
 }
 
 func (d *DriversConfigurator) Configure() (*SelenoidConfig, error) {
@@ -175,17 +175,17 @@ func (d *DriversConfigurator) Configure() (*SelenoidConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load available browsers: %v\n", err)
 	}
-	err = d.createOutputDir()
+	err = d.createConfigDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create output directory: %v\n", err)
 	}
-	downloadedDrivers := d.downloadDrivers(browsers, d.OutputDir)
+	downloadedDrivers := d.downloadDrivers(browsers, d.ConfigDir)
 	cfg := generateConfig(downloadedDrivers)
 	data, err := json.MarshalIndent(cfg, "", "    ")
 	if err != nil {
 		return &cfg, fmt.Errorf("failed to marshal json: %v\n", err)
 	}
-	return &cfg, ioutil.WriteFile(getSelenoidConfigPath(d.OutputDir), data, 0644)
+	return &cfg, ioutil.WriteFile(getSelenoidConfigPath(d.ConfigDir), data, 0644)
 }
 
 func generateConfig(downloadedDrivers []downloadedDriver) SelenoidConfig {
@@ -441,7 +441,7 @@ func (d *DriversConfigurator) IsRunning() bool {
 
 func (d *DriversConfigurator) Start() error {
 	return runCommand(d.getSelenoidBinaryPath(), []string{
-		"-conf", getSelenoidConfigPath(d.OutputDir),
+		"-conf", getSelenoidConfigPath(d.ConfigDir),
 		"-no-docker",
 	})
 }

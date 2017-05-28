@@ -2,12 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/aerokube/cm/selenoid"
 	"github.com/spf13/cobra"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"github.com/aerokube/cm/selenoid"
 )
 
 const (
@@ -23,7 +23,7 @@ var (
 	version         string
 	browsers        string
 	browsersJSONUrl string
-	configDir string
+	configDir       string
 	skipDownload    bool
 	force           bool
 )
@@ -48,7 +48,7 @@ func initFlags() {
 		selenoidCleanupCmd,
 	} {
 		c.Flags().BoolVarP(&quiet, "quiet", "q", false, "suppress output")
-		c.Flags().StringVarP(&configDir, "config-dir", "c", getSelenoidOutputDir(), "directory to save files")
+		c.Flags().StringVarP(&configDir, "config-dir", "c", getSelenoidConfigDir(), "directory to save files")
 	}
 	for _, c := range []*cobra.Command{
 		selenoidDownloadCmd,
@@ -80,18 +80,18 @@ func createLifecycle() (*selenoid.Lifecycle, error) {
 	config := selenoid.LifecycleConfig{
 		Quiet:     quiet,
 		Force:     force,
-		OutputDir: configDir,
-		Browsers: browsers,
+		ConfigDir: configDir,
+		Browsers:  browsers,
 		Download:  !skipDownload,
-		
+
 		LastVersions: lastVersions,
-		RegistryUrl: registry,
-		Tmpfs: tmpfs,
-		
+		RegistryUrl:  registry,
+		Tmpfs:        tmpfs,
+
 		BrowsersJsonUrl: browsersJSONUrl,
-		OS:        operatingSystem,
-		Arch:      arch,
-		Version:   version,
+		OS:              operatingSystem,
+		Arch:            arch,
+		Version:         version,
 	}
 	return selenoid.NewLifecycle(&config)
 }
@@ -107,13 +107,12 @@ var selenoidCmd = &cobra.Command{
 func getConfigDir(elem ...string) string {
 	usr, err := user.Current()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to determine current user: writing data to current directory")
-		return filepath.Join(append([]string{usr.HomeDir}, elem...)...)
+		return filepath.Join(elem...)
 	}
-	return filepath.Join(elem...)
+	return filepath.Join(append([]string{usr.HomeDir}, elem...)...)
 }
 
-func getSelenoidOutputDir() string {
+func getSelenoidConfigDir() string {
 	return getConfigDir(".aerokube", "selenoid")
 }
 

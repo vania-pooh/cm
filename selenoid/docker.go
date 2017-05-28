@@ -37,7 +37,7 @@ type SelenoidConfig map[string]config.Versions
 
 type DockerConfigurator struct {
 	Logger
-	OutputDirAware
+	ConfigDirAware
 	VersionAware
 	DownloadAware
 	RequestedBrowsersAware
@@ -52,7 +52,7 @@ type DockerConfigurator struct {
 func NewDockerConfigurator(config *LifecycleConfig) (*DockerConfigurator, error) {
 	c := &DockerConfigurator{
 		Logger:                 Logger{Quiet: config.Quiet},
-		OutputDirAware:         OutputDirAware{OutputDir: config.OutputDir},
+		ConfigDirAware:         ConfigDirAware{ConfigDir: config.ConfigDir},
 		VersionAware:           VersionAware{Version: config.Version},
 		DownloadAware:          DownloadAware{DownloadNeeded: config.Download},
 		RequestedBrowsersAware: RequestedBrowsersAware{Browsers: config.Browsers},
@@ -145,7 +145,7 @@ func (c *DockerConfigurator) getLatestSelenoidVersion() *string {
 }
 
 func (c *DockerConfigurator) IsConfigured() bool {
-	return fileExists(getSelenoidConfigPath(c.OutputDir))
+	return fileExists(getSelenoidConfigPath(c.ConfigDir))
 }
 
 func (c *DockerConfigurator) Configure() (*SelenoidConfig, error) {
@@ -154,11 +154,11 @@ func (c *DockerConfigurator) Configure() (*SelenoidConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal json: %v\n", err)
 	}
-	err = c.createOutputDir()
+	err = c.createConfigDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create output directory: %v\n", err)
 	}
-	return &cfg, ioutil.WriteFile(getSelenoidConfigPath(c.OutputDir), data, 0644)
+	return &cfg, ioutil.WriteFile(getSelenoidConfigPath(c.ConfigDir), data, 0644)
 }
 
 func (c *DockerConfigurator) createConfig() SelenoidConfig {

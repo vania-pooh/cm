@@ -39,12 +39,12 @@ func (c *Logger) Printf(format string, v ...interface{}) {
 	}
 }
 
-type OutputDirAware struct {
-	OutputDir string
+type ConfigDirAware struct {
+	ConfigDir string
 }
 
-func (o *OutputDirAware) createOutputDir() error {
-	err := os.MkdirAll(o.OutputDir, os.ModePerm)
+func (c *ConfigDirAware) createConfigDir() error {
+	err := os.MkdirAll(c.ConfigDir, os.ModePerm)
 	if err != nil {
 		return err
 	}

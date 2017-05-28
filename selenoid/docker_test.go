@@ -106,11 +106,11 @@ func TestLimitNoPull(t *testing.T) {
 
 func testConfigure(t *testing.T, download bool) {
 	withTmpDir(t, "test-docker-configure", func(t *testing.T, dir string) {
-		
+
 		lcConfig := LifecycleConfig{
-			OutputDir: dir,
+			ConfigDir:   dir,
 			RegistryUrl: mockDockerServer.URL,
-			Download: download,
+			Download:    download,
 			Quiet:       false,
 		}
 		c, err := NewDockerConfigurator(&lcConfig)
@@ -121,17 +121,17 @@ func testConfigure(t *testing.T, download bool) {
 		cfgPointer, err := (*c).Configure()
 		AssertThat(t, err, Is{nil})
 		AssertThat(t, cfgPointer, Is{Not{nil}})
-	
+
 		cfg := *cfgPointer
 		AssertThat(t, len(cfg), EqualTo{2})
-	
+
 		firefoxVersions, hasFirefoxKey := cfg["firefox"]
 		AssertThat(t, hasFirefoxKey, Is{true})
 		AssertThat(t, firefoxVersions, Is{Not{nil}})
-	
+
 		tmpfsMap := make(map[string]string)
 		tmpfsMap["/tmp"] = "size=512m"
-	
+
 		correctFFBrowsers := make(map[string]*config.Browser)
 		correctFFBrowsers["46.0"] = &config.Browser{
 			Image: "selenoid/firefox:46.0",
@@ -149,12 +149,12 @@ func testConfigure(t *testing.T, download bool) {
 			Default:  "46.0",
 			Versions: correctFFBrowsers,
 		}})
-	
+
 		operaVersions, hasPhantomjsKey := cfg["opera"]
 		AssertThat(t, hasPhantomjsKey, Is{true})
 		AssertThat(t, operaVersions, Is{Not{nil}})
 		AssertThat(t, operaVersions.Default, EqualTo{"44.0"})
-	
+
 		correctPhantomjsBrowsers := make(map[string]*config.Browser)
 		correctPhantomjsBrowsers["2.1.1"] = &config.Browser{
 			Image: "selenoid/opera:44.0",

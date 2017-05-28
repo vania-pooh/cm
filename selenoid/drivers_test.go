@@ -133,7 +133,7 @@ func TestConfigureDrivers(t *testing.T) {
 	withTmpDir(t, "test-download", func(t *testing.T, dir string) {
 		browsersJsonUrl := mockServerUrl(mockDriverServer, "/browsers.json")
 		lcConfig := LifecycleConfig{
-			OutputDir:       dir,
+			ConfigDir:       dir,
 			Browsers:        "first,second,third",
 			BrowsersJsonUrl: browsersJsonUrl,
 			Download:        true,
@@ -288,7 +288,7 @@ func testDownloadRelease(t *testing.T, desiredVersion string, expectedFileConten
 	withTmpDir(t, "downloader", func(t *testing.T, dir string) {
 		lcConfig := LifecycleConfig{
 			GithubBaseUrl: mockDriverServer.URL,
-			OutputDir:     dir,
+			ConfigDir:     dir,
 			OS:            runtime.GOOS,
 			Arch:          runtime.GOARCH,
 			Version:       desiredVersion,
@@ -313,7 +313,7 @@ func TestUnknownRelease(t *testing.T) {
 	downloadShouldFail(t, func(dir string) *DriversConfigurator {
 		lcConfig := LifecycleConfig{
 			GithubBaseUrl: mockDriverServer.URL,
-			OutputDir:     dir,
+			ConfigDir:     dir,
 			OS:            runtime.GOOS,
 			Arch:          runtime.GOARCH,
 			Version:       "missing-version",
@@ -334,7 +334,7 @@ func TestUnavailableBinary(t *testing.T) {
 	downloadShouldFail(t, func(dir string) *DriversConfigurator {
 		lcConfig := LifecycleConfig{
 			GithubBaseUrl: mockDriverServer.URL,
-			OutputDir:     dir,
+			ConfigDir:     dir,
 			OS:            "missing-os",
 			Arch:          "missing-arch",
 			Version:       previousReleaseTag,
@@ -347,7 +347,7 @@ func TestWrongBaseUrl(t *testing.T) {
 	downloadShouldFail(t, func(dir string) *DriversConfigurator {
 		lcConfig := LifecycleConfig{
 			GithubBaseUrl: ":::bad-url:::",
-			OutputDir:     dir,
+			ConfigDir:     dir,
 			OS:            runtime.GOOS,
 			Arch:          runtime.GOARCH,
 			Version:       Latest,

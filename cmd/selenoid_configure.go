@@ -19,7 +19,6 @@ var selenoidConfigureCmd = &cobra.Command{
 			lifecycle.Printf("failed to configure Selenoid: %v\n", err)
 			os.Exit(1)
 		}
-		lifecycle.Printf("Successfully saved configuration to %s\n", lifecycle.Config.ConfigDir)
 		os.Exit(0)
 	},
 }

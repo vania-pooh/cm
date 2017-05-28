@@ -93,6 +93,9 @@ func (l *Lifecycle) Configure() error {
 			}
 			l.Printf("Configuring Selenoid...\n")
 			_, err := l.configurable.Configure()
+			if err == nil {
+				l.Printf("Successfully saved configuration to %s\n", l.Config.ConfigDir)
+			}
 			return err
 		},
 	})

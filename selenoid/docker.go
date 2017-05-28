@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 	. "vbom.ml/util/sortorder"
+	"strconv"
 )
 
 const (
@@ -339,7 +340,7 @@ func (c *DockerConfigurator) Start() error {
 	env := []string{
 		fmt.Sprintf("TZ=%s", time.Local),
 	}
-	port, err := nat.NewPort("tcp", string(selenoidContainerPort))
+	port, err := nat.NewPort("tcp", strconv.Itoa(selenoidContainerPort))
 	if err != nil {
 		return fmt.Errorf("failed to init Selenoid port: %v", err)
 	}

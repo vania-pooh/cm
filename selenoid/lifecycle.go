@@ -43,6 +43,7 @@ func NewLifecycle(config *LifecycleConfig) (*Lifecycle, error) {
 		Forceable: Forceable{Force: config.Force},
 	}
 	if isDockerAvailable() {
+		lc.Printf("using Docker\n")
 		dockerCfg, err := NewDockerConfigurator(config)
 		if err != nil {
 			return nil, err
@@ -52,6 +53,7 @@ func NewLifecycle(config *LifecycleConfig) (*Lifecycle, error) {
 		lc.runnable = dockerCfg
 		lc.closer = dockerCfg
 	} else {
+		lc.Printf("Docker is not supported - using binaries\n")
 		driversCfg := NewDriversConfigurator(config)
 		lc.downloadable = driversCfg
 		lc.configurable = driversCfg

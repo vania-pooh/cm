@@ -8,7 +8,7 @@ import (
 
 func init() {
 	selenoidStartCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "suppress output")
-	selenoidStartCmd.Flags().StringVarP(&outputDir, "output-dir", "o", getSelenoidOutputDir(), "directory to save files")
+	selenoidStartCmd.Flags().StringVarP(&outputDir, "config-dir", "c", getSelenoidOutputDir(), "directory to save files")
 	selenoidStartCmd.Flags().BoolVarP(&force, "force", "f", false, "force action")
 }
 

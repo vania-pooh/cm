@@ -130,20 +130,16 @@ func (l *Lifecycle) Start() error {
 }
 
 func (l *Lifecycle) Stop() error {
-	return chain([]func() error{
-		func() error {
-			return l.Configure()
-		},
-		func() error {
-			if !l.runnable.IsRunning() {
-				l.Printf("Selenoid is not running\n")
-				return nil
-			}
-			l.Printf("Stopping Selenoid...\n")
-			return l.runnable.Stop()
-		},
-	})
-	return nil
+	if !l.runnable.IsRunning() {
+		l.Printf("Selenoid is not running\n")
+		return nil
+	}
+	l.Printf("Stopping Selenoid...\n")
+	err :=  l.runnable.Stop()
+	if err == nil {
+		l.Printf("Successfully stopped Selenoid\n")
+	}
+	return err
 }
 
 func isDockerAvailable() bool {

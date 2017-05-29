@@ -23,10 +23,10 @@ var selenoidCleanupCmd = &cobra.Command{
 
 		err = os.RemoveAll(configDir)
 		if err != nil {
-			stderr("Failed to remove configuration directory: %v\n", err)
+			lifecycle.Printf("Failed to remove configuration directory: %v\n", err)
 			os.Exit(1)
 		}
-		stderr("Successfully removed configuration directory\n")
+		lifecycle.Printf("Successfully removed configuration directory\n")
 		os.Exit(0)
 	},
 }

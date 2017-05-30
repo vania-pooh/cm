@@ -442,7 +442,7 @@ func (d *DriversConfigurator) IsRunning() bool {
 func (d *DriversConfigurator) Start() error {
 	return runCommand(d.getSelenoidBinaryPath(), []string{
 		"-conf", getSelenoidConfigPath(d.ConfigDir),
-		"-no-docker",
+		"-disable-docker",
 	})
 }
 

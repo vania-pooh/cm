@@ -121,14 +121,14 @@ func (c *DockerConfigurator) getSelenoidImage() *types.ImageSummary {
 
 func (c *DockerConfigurator) Download() (string, error) {
 	version := c.Version
-	if version == "" {
+	if version == Latest {
 		latestVersion := c.getLatestSelenoidVersion()
 		if latestVersion != nil {
 			version = *latestVersion
 		}
 	}
 	ref := selenoidImage
-	if version != "" {
+	if version != Latest {
 		ref = fmt.Sprintf("%s:%s", ref, version)
 	}
 	if !c.pullImage(context.Background(), ref) {

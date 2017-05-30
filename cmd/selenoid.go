@@ -58,7 +58,7 @@ func initFlags() {
 	} {
 		c.Flags().StringVarP(&operatingSystem, "operating-system", "o", runtime.GOOS, "target operating system (drivers only)")
 		c.Flags().StringVarP(&arch, "architecture", "a", runtime.GOARCH, "target architecture (drivers only)")
-		c.Flags().StringVarP(&version, "version", "v", "", "desired version; empty string for latest release")
+		c.Flags().StringVarP(&version, "version", "v", selenoid.Latest, "desired version; default is latest release")
 		c.Flags().StringVarP(&browsers, "browsers", "b", "", "comma separated list of browser names to process")
 		c.Flags().StringVarP(&browsersJSONUrl, "browsers-json", "j", defaultBrowsersJsonURL, "browsers JSON data URL (in most cases never need to be set manually)")
 		c.Flags().BoolVarP(&skipDownload, "no-download", "n", false, "only output config file without downloading images or drivers")

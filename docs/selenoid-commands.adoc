@@ -1,11 +1,11 @@
-== Selenoid
+== Configuring Selenoid
 This section describes supported ways of automatic https://github.com/aerokube/selenoid[Selenoid] configuration.
 
 [TIP]
 ====
 To quickly configure and run Selenoid type:
 
-    ./cm selenoid start
+    $ ./cm selenoid start
     
 ====
 
@@ -16,11 +16,11 @@ Selenoid can be configured in two ways:
 
 Which mode to use is detected automatically by trying to access Docker API. To view the list of available commands:
 
-    ./cm selenoid --help
+    $ ./cm selenoid --help
     
 To launch command:
 
-    ./cm selenoid <command> [args...]
+    $ ./cm selenoid <command> [args...]
 
 Supported commands are:
 
@@ -38,22 +38,22 @@ Supported commands are:
 
 To see supported flags for each command append `--help`:
 
-    ./cm selenoid start --help
+    $ ./cm selenoid start --help
 
 === Example Commands
 * `download` command downloads latest or specified Selenoid release as standalone binary or container image:
 
-    ./cm selenoid download [--version 1.2.1] [--force]
+    $ ./cm selenoid download [--version 1.2.1] [--force]
 +
 Does nothing when already downloaded. Use `--force` flag to download again.
 * `configure` command in addition to downloading Selenoid also downloads container images or webdriver binaries and generates configuration file:
 
-    ./cm selenoid configure [--browsers firefox,opera] [--last-versions 2] [--tmpfs 128]
+    $ ./cm selenoid configure [--browsers firefox,opera] [--last-versions 2] [--tmpfs 128]
 +    
 Use `--browsers` to limit browsers to be configured, `--tmpfs` - to add https://en.wikipedia.org/wiki/Tmpfs[Tmpfs] support, `--last-versions` - to limit how many last browser versions to download. If you wish to download all available versions - specify `--last-versions 0`.
 
 * `start` command configures Selenoid and starts it:
 
-    ./cm selenoid start
+    $ ./cm selenoid start
     
 By default Selenoid data is stored in `~/.aerokube/selenoid` but you can specify another directory using `--config-dir` flag.

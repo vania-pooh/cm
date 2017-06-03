@@ -9,10 +9,6 @@ type Configurator interface {
 	Configure() *SelenoidConfig
 }
 
-type Closer interface {
-	Close()
-}
-
 type Downloadable interface {
 	IsDownloaded() bool
 	Download() (string, error)

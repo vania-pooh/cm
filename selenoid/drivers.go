@@ -78,6 +78,7 @@ func NewDriversConfigurator(config *LifecycleConfig) *DriversConfigurator {
 		DownloadAware:          DownloadAware{DownloadNeeded: config.Download},
 		RequestedBrowsersAware: RequestedBrowsersAware{Browsers: config.Browsers},
 		BrowsersJsonUrl:        config.BrowsersJsonUrl,
+		Browsers:               config.Browsers,
 		GithubBaseUrl:          config.GithubBaseUrl,
 		OS:                     config.OS,
 		Arch:                   config.Arch,
@@ -241,15 +242,21 @@ func downloadFileWithProgressBar(url string, w io.Writer) error {
 	}
 	defer resp.Body.Close()
 
-	bar := pb.New(int(resp.ContentLength)).SetUnits(pb.U_BYTES)
-	bar.Output = os.Stderr
-	bar.Start()
-	defer bar.Finish()
-
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("unexpected response code: %d", resp.StatusCode)
 	}
-	writer := io.MultiWriter(w, bar)
+
+	contentLength := int(resp.ContentLength)
+	writer := w
+
+	if contentLength > 0 {
+		bar := pb.New(contentLength).SetUnits(pb.U_BYTES)
+		bar.Output = os.Stderr
+		bar.Start()
+		defer bar.Finish()
+		writer = io.MultiWriter(w, bar)
+	}
+
 	_, err = io.Copy(writer, resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to save file: %v", err)
@@ -446,9 +453,13 @@ func (d *DriversConfigurator) Start() error {
 	})
 }
 
+var killFunc func(os.Process) error = func(p os.Process) error {
+	return p.Kill()
+}
+
 func (d *DriversConfigurator) Stop() error {
 	for _, p := range findSelenoidProcesses() {
-		err := p.Kill()
+		err := killFunc(p)
 		if err != nil {
 			return err
 		}
@@ -480,8 +491,9 @@ func findProcesses(regex string) []os.Process {
 	return ret
 }
 
+var execCommand = exec.Command
 func runCommand(command string, args []string) error {
-	cmd := exec.Command(command, args...)
+	cmd := execCommand(command, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

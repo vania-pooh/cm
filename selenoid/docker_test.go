@@ -52,6 +52,87 @@ func mux() http.Handler {
 			w.Write([]byte(output))
 		},
 	))
+	mux.HandleFunc("/v1.29/images/json", http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			output := `
+			[{
+			
+			    "Id": "sha256:e216a057b1cb1efc11f8a268f37ef62083e70b1b38323ba252e25ac88904a7e8",
+			    "ParentId": "",
+			    "RepoTags": [ "aerokube/selenoid" ],
+			    "RepoDigests": [],
+			    "Created": 1474925151,
+			    "Size": 103579269,
+			    "VirtualSize": 103579269,
+			    "SharedSize": 0,
+			    "Labels": { },
+			    "Containers": 2
+			
+			}]
+			`
+			w.Write([]byte(output))
+		},
+	))
+	mux.HandleFunc("/v1.29/containers/create", http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusCreated)
+			output := `{"id": "e90e34656806", "warnings": []}`
+			w.Write([]byte(output))
+		},
+	))
+	mux.HandleFunc("/v1.29/containers/e90e34656806/start", http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	))
+	mux.HandleFunc("/v1.29/containers/e90e34656806/stop", http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	))
+	mux.HandleFunc("/v1.29/containers/e90e34656806", http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	))
+	mux.HandleFunc("/v1.29/containers/kill", http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	))
+	mux.HandleFunc("/v1.29/containers/json", http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			output := `
+			[{
+				"Id": "e90e34656806",
+				"Names": [ "selenoid" ],
+				"Image": "aerokube/selenoid:latest",
+				"ImageID": "e216a057b1cb1efc11f8a268f37ef62083e70b1b38323ba252e25ac88904a7e8",
+				"Command": "/usr/bin/selenoid",
+				"Created": 1367854154,
+				"State": "Exited",
+				"Status": "Exit 0",
+				"Ports": [
+					{
+						"PrivatePort": 4444,
+						"PublicPort": 4444,
+						"Type": "tcp"
+					}
+				],
+				"Labels": { },
+				"SizeRw": 12288,
+				"SizeRootFs": 0,
+				"HostConfig": {},
+				"NetworkSettings": {},
+			    	"Mounts": [ ]
+				
+			}]
+			`
+			w.Write([]byte(output))
+		},
+	))
 	return mux
 }
 
@@ -112,12 +193,14 @@ func testConfigure(t *testing.T, download bool) {
 			RegistryUrl: mockDockerServer.URL,
 			Download:    download,
 			Quiet:       false,
+			LastVersions: 2,
+			Tmpfs: 512,
+			Browsers: "firefox,opera",
 		}
 		c, err := NewDockerConfigurator(&lcConfig)
 		AssertThat(t, err, Is{nil})
-		c.LastVersions = 2
-		c.Tmpfs = 512
 		defer c.Close()
+		AssertThat(t, c.IsConfigured(), Is{false})
 		cfgPointer, err := (*c).Configure()
 		AssertThat(t, err, Is{nil})
 		AssertThat(t, cfgPointer, Is{Not{nil}})
@@ -162,4 +245,27 @@ func testConfigure(t *testing.T, download bool) {
 			Tmpfs: tmpfsMap,
 		}
 	})
+}
+
+func TestStartStopContainer(t *testing.T) {
+	c, err := NewDockerConfigurator(&LifecycleConfig{
+		RegistryUrl: mockDockerServer.URL,
+	})
+	AssertThat(t, err, Is{nil})
+	AssertThat(t, c.IsRunning(), Is{true})
+	AssertThat(t, c.Start(), Is{nil})
+	AssertThat(t, c.Stop(), Is{nil})
+}
+
+func TestDownload(t *testing.T) {
+	c, err := NewDockerConfigurator(&LifecycleConfig{
+		RegistryUrl: mockDockerServer.URL,
+		Quiet: true,
+		Version: Latest,
+	})
+	AssertThat(t, c.IsDownloaded(), Is{true})
+	AssertThat(t, err, Is{nil})
+	ref, err := c.Download()
+	AssertThat(t, ref, Not{nil})
+	AssertThat(t, err, Is{nil})
 }

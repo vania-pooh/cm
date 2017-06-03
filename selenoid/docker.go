@@ -380,7 +380,10 @@ func (c *DockerConfigurator) removeContainer(id string) error {
 func (c *DockerConfigurator) Stop() error {
 	sc := c.getSelenoidContainer()
 	if sc != nil {
-		return c.docker.ContainerRemove(context.Background(), sc.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+		err := c.removeContainer(sc.ID)
+		if err != nil {
+			return fmt.Errorf("failed to stop container: %v", err)
+		}
 	}
 	return nil
 }

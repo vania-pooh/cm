@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"runtime"
 	"testing"
+	"os/exec"
 )
 
 const (
@@ -140,6 +141,7 @@ func TestConfigureDrivers(t *testing.T) {
 			Quiet:           false,
 		}
 		configurator := NewDriversConfigurator(&lcConfig)
+		AssertThat(t, configurator.IsConfigured(), Is{false})
 		cfgPointer, err := (*configurator).Configure()
 		AssertThat(t, err, Is{nil})
 		AssertThat(t, cfgPointer, Is{Not{nil}})
@@ -294,6 +296,7 @@ func testDownloadRelease(t *testing.T, desiredVersion string, expectedFileConten
 			Version:       desiredVersion,
 		}
 		configurator := NewDriversConfigurator(&lcConfig)
+		AssertThat(t, configurator.IsDownloaded(), Is{false})
 		outputPath, err := configurator.Download()
 		AssertThat(t, err, Is{nil})
 		AssertThat(t, outputPath, Is{Not{nil}})
@@ -354,4 +357,35 @@ func TestWrongBaseUrl(t *testing.T) {
 		}
 		return NewDriversConfigurator(&lcConfig)
 	})
+}
+
+//Based on https://npf.io/2015/06/testing-exec-command/
+func TestStartStopProcess(t *testing.T) {
+	execCommand = fakeExecCommand
+	killFunc = func(_ os.Process) error {return nil}
+	defer func(){ 
+		execCommand = exec.Command
+	}()
+	withTmpDir(t, "something", func(t *testing.T, dir string) {
+		lcConfig := LifecycleConfig{
+			GithubBaseUrl: mockDriverServer.URL,
+			ConfigDir:     dir,
+			OS:            runtime.GOOS,
+			Arch:          runtime.GOARCH,
+			Version:       Latest,
+		}
+		configurator := NewDriversConfigurator(&lcConfig)
+		AssertThat(t, configurator.IsRunning(), Is{true})
+		AssertThat(t, configurator.Start(), Is{nil})
+		AssertThat(t, configurator.Stop(), Is{nil})
+	})
+
+}
+
+func fakeExecCommand(command string, args...string) *exec.Cmd {
+	cs := []string{"-test.run=TestHelperProcess", "--", command}
+	cs = append(cs, args...)
+	cmd := exec.Command(os.Args[0], cs...)
+	cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
+	return cmd
 }
